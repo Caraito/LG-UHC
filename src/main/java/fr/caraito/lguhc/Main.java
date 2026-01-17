@@ -10,6 +10,7 @@ import fr.caraito.lguhc.listeners.PlayerListener;
 import fr.caraito.lguhc.managers.RoleManager;
 import fr.caraito.lguhc.managers.ScoreboardManager;
 import fr.caraito.lguhc.managers.WorldManager;
+import fr.caraito.lguhc.tasks.GameTask;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -21,6 +22,7 @@ public class Main extends JavaPlugin {
     private WorldManager worldManager;
     private RoleManager roleManager;
     private ScoreboardManager sbManager;
+    private GameTask gameTask; // Ajout pour stocker la tâche
 
     private static Main instance;
 
@@ -28,29 +30,23 @@ public class Main extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        // Initialisation de l'état au démarrage
         setState(GState.LOBBY);
         this.worldManager = new WorldManager();
         this.roleManager = new RoleManager();
         this.sbManager = new ScoreboardManager();
 
-        // Enregistrement des événements (Listeners)
+        worldManager.deleteAllWorldFolders();
+
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new DeathListener(this), this);
 
-        // Enregistrement des commandes
         getCommand("lgstart").setExecutor(new CommandStart(this));
         getCommand("lgworld").setExecutor(new CommandWorld(this));
         getCommand("lgspawn").setExecutor(new CommandSpawn());
         getCommand("lgstop").setExecutor(new CommandStop(this));
 
-        // Message de démarrage stylisé dans la console
-        Bukkit.getConsoleSender().sendMessage(ChatColor.GRAY + "---------------------------");
-        Bukkit.getConsoleSender().sendMessage(ChatColor.GOLD + "Plugin LG UHC par Caraito");
-        Bukkit.getConsoleSender().sendMessage(ChatColor.YELLOW + "Statut: " + ChatColor.GREEN + "Operationnel (1.8.8)");
-        Bukkit.getConsoleSender().sendMessage(ChatColor.GRAY + "---------------------------");
+        Bukkit.getConsoleSender().sendMessage(ChatColor.GOLD + "Plugin LG UHC par Caraito - Operationnel");
 
-        // Runnable de mise à jour des scoreboards
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (sbManager != null) {
@@ -62,39 +58,20 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        getLogger().info("Arret du plugin LG UHC...");
+        if (worldManager != null) worldManager.deleteAllWorldFolders();
     }
 
-    /**
-     * Change l'état de la partie et en informe tout le serveur
-     */
     public void setState(GState state) {
         this.gameState = state;
-        Bukkit.broadcastMessage(ChatColor.DARK_GRAY + "[" + ChatColor.GOLD + "LG UHC" + ChatColor.DARK_GRAY + "] "
-                + ChatColor.GRAY + "L'etat du jeu est maintenant : " + ChatColor.YELLOW + state.name());
+        Bukkit.broadcastMessage("§8[§6LG UHC§8] §7État : §e" + state.name());
     }
 
-    public boolean isState(GState state) {
-        return this.gameState == state;
-    }
+    public boolean isState(GState state) { return this.gameState == state; }
+    public WorldManager getWorldManager() { return worldManager; }
+    public RoleManager getRoleManager() { return roleManager; }
+    public static Main getInstance() { return instance; }
 
-    public GState getGameState() {
-        return gameState;
-    }
-
-    public WorldManager getWorldManager() {
-        return worldManager;
-    }
-
-    public RoleManager getRoleManager() {
-        return roleManager;
-    }
-
-    public ScoreboardManager getSbManager() {
-        return sbManager;
-    }
-
-    public static Main getInstance() {
-        return instance;
-    }
+    // Getters et Setters pour la Task
+    public GameTask getGameTask() { return gameTask; }
+    public void setGameTask(GameTask gameTask) { this.gameTask = gameTask; }
 }

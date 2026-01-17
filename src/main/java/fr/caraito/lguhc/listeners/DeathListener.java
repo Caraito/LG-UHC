@@ -24,29 +24,29 @@ public class DeathListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
 
-        // 1. Récupération et annonce du rôle du mort
+        // 1. Annonce du rôle du joueur mort
         LGRole role = main.getRoleManager().getRole(victim.getUniqueId());
         String roleName = (role != null) ? role.getName() : "Aucun rôle";
         event.setDeathMessage(ChatColor.RED + victim.getName() + ChatColor.GRAY + " est mort ! Il était " + ChatColor.GOLD + roleName);
 
-        // 2. Passage en spectateur
+        // 2. Passage en spectateur (délai de 10 ticks pour éviter les bugs de respawn)
         Bukkit.getScheduler().runTaskLater(main, () -> {
             victim.setGameMode(GameMode.SPECTATOR);
         }, 10L);
 
-        // 3. Vérification de la victoire
+        // 3. On vérifie si une équipe a gagné
         checkWin();
     }
 
     private void checkWin() {
-        // On ne vérifie la victoire que si la partie est lancée
+        // On ne vérifie la victoire que si la partie est réellement en cours
         if (!main.isState(GState.GAME)) return;
 
         int villageoisRestants = 0;
         int loupsRestants = 0;
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-            // On ne compte que les joueurs en vie (Survie)
+            // On ne compte que les survivants
             if (p.getGameMode() == GameMode.SURVIVAL) {
                 LGRole role = main.getRoleManager().getRole(p.getUniqueId());
                 if (role == null) continue;
@@ -59,7 +59,7 @@ public class DeathListener implements Listener {
             }
         }
 
-        // Conditions de victoire
+        // --- CONDITIONS DE VICTOIRE ---
         if (loupsRestants == 0 && villageoisRestants > 0) {
             finishGame("Le Village");
         } else if (villageoisRestants == 0 && loupsRestants > 0) {
@@ -70,27 +70,36 @@ public class DeathListener implements Listener {
     }
 
     private void finishGame(String winner) {
-        main.setState(GState.LOBBY); // On repasse en Lobby pour bloquer les events de jeu
+        // --- ÉTAPE CRUCIALE POUR TON BUG ---
+        // On arrête le chronomètre immédiatement pour éviter qu'il continue de tourner
+        if (main.getGameTask() != null) {
+            main.getGameTask().cancel();
+            main.setGameTask(null);
+        }
+
+        // On change l'état pour bloquer les événements de jeu
+        main.setState(GState.LOBBY);
 
         Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "===============================");
         Bukkit.broadcastMessage(ChatColor.GOLD + "   VICTOIRE : " + ChatColor.YELLOW + winner);
         Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "===============================");
 
-        // 4. Nettoyage automatique après 10 secondes
+        // Attente de 10 secondes avant le retour au spawn et le nettoyage
         Bukkit.getScheduler().runTaskLater(main, () -> {
-            Bukkit.broadcastMessage(ChatColor.GRAY + "Fin de partie, retour au lobby et nettoyage du monde...");
+            Bukkit.broadcastMessage(ChatColor.GRAY + "Nettoyage du monde et retour au lobby...");
 
-            // On TP tout le monde sur le monde "world"
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.teleport(Bukkit.getWorld("world").getSpawnLocation());
+                if (Bukkit.getWorld("world") != null) {
+                    p.teleport(Bukkit.getWorld("world").getSpawnLocation());
+                }
                 p.setGameMode(GameMode.ADVENTURE);
                 p.getInventory().clear();
+                p.setHealth(20.0);
+                p.setFoodLevel(20);
             }
 
-            // On supprime le monde de la partie
+            // Suppression du monde de jeu et reset des rôles
             main.getWorldManager().unloadCurrentWorld();
-
-            // On vide les rôles
             main.getRoleManager().clearRoles();
 
         }, 200L); // 200 ticks = 10 secondes
