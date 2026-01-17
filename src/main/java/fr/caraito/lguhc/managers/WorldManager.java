@@ -44,41 +44,38 @@ public class WorldManager {
     }
 
     public boolean prepareAndTeleport(int radius) {
-        // Condition critique : on vérifie si un monde est prêt
-        if (preparedWorlds.isEmpty()) {
-            return false;
-        }
+        if (preparedWorlds.isEmpty()) return false;
 
         String worldName = preparedWorlds.remove(0);
         this.currentGameWorld = Bukkit.getWorld(worldName);
-
         if (this.currentGameWorld == null) return false;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            // 1. On génère les coordonnées
-            double x = (Math.random() * radius * 2) - radius;
-            double z = (Math.random() * radius * 2) - radius;
+            Location teleLoc;
+            int attempts = 0;
 
-            // 2. IMPORTANT : On force le chargement du chunk avant de calculer le Y
-            currentGameWorld.getChunkAt((int)x >> 4, (int)z >> 4).load();
+            // Boucle de recherche de position sûre
+            do {
+                double x = (Math.random() * radius * 2) - radius;
+                double z = (Math.random() * radius * 2) - radius;
 
-            // 3. On récupère le bloc le plus haut et on ajoute une marge de sécurité (+2)
-            double y = currentGameWorld.getHighestBlockYAt((int)x, (int)z) + 1.5;
+                // On charge le chunk pour être sûr que getHighestBlockYAt fonctionne
+                currentGameWorld.getChunkAt((int)x >> 4, (int)z >> 4).load();
 
-            Location teleLoc = new Location(currentGameWorld, x, y, z);
+                double y = currentGameWorld.getHighestBlockYAt((int)x, (int)z);
+                teleLoc = new Location(currentGameWorld, x + 0.5, y + 1, z + 0.5);
 
-            // 4. Vérification anti-étouffement : si le bloc est solide (feuilles, etc), on monte
-            while (teleLoc.getBlock().getType().isSolid() || teleLoc.clone().add(0, 1, 0).getBlock().getType().isSolid()) {
-                teleLoc.add(0, 1, 0);
-            }
+                attempts++;
+                // Sécurité pour éviter une boucle infinie si la map est 100% océan
+                if (attempts > 50) break;
+
+            } while (!isSafe(teleLoc));
 
             player.teleport(teleLoc);
             player.setHealth(20.0);
-            player.setFoodLevel(20);
             player.getInventory().clear();
             player.setGameMode(GameMode.SURVIVAL);
-
-            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté dans le monde de jeu.");
+            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté dans le monde de jeu !");
         }
         return true;
     }
@@ -127,6 +124,28 @@ public class WorldManager {
             }
         }
         path.delete();
+    }
+
+    private boolean isSafe(Location location) {
+        // On vérifie le bloc aux pieds du joueur
+        Material blockType = location.getBlock().getType();
+        // On vérifie aussi le bloc juste en dessous
+        Material underType = location.clone().add(0, -1, 0).getBlock().getType();
+
+        // Si c'est de l'eau ou de la lave (statique ou coulante), ce n'est pas sûr
+        if (blockType == Material.WATER || blockType == Material.STATIONARY_WATER ||
+                blockType == Material.LAVA || blockType == Material.STATIONARY_LAVA) {
+            return false;
+        }
+
+        // Pareil pour le bloc du dessous (on ne veut pas spawn sur un bloc de lave)
+        if (underType == Material.WATER || underType == Material.STATIONARY_WATER ||
+                underType == Material.LAVA || underType == Material.STATIONARY_LAVA) {
+            return false;
+        }
+
+        // Le bloc doit être de l'air pour que le joueur ne soit pas étouffé
+        return blockType == Material.AIR;
     }
 
     public List<String> getPreparedWorlds() { return preparedWorlds; }
