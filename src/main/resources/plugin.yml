@@ -1,0 +1,18 @@
+name: LGUHC
+version: 1.0
+main: fr.caraito.lguhc.Main
+api-version: 1.8
+
+commands:
+  lgstart:
+    description: Main command for LGUHC plugin
+    usage: /lgstart
+    permission: lguhc.start
+  lgworld:
+    description: Gérer les mondes LG
+    permission: lguhc.world
+  lgspawn:
+    description: Retourner au spawn principal (monde world)
+  lgstop:
+    description: Arrête la partie de Loup-Garou UHC en cours.
+    permission: lguhc.admin
