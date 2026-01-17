@@ -9,10 +9,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 public class GameTask extends BukkitRunnable {
 
     private final Main main;
-    private int seconds = 0;
+    // On met en static pour que le ScoreboardManager puisse y accéder facilement
+    private static int seconds = 0;
 
     public GameTask(Main main) {
         this.main = main;
+        seconds = 0; // On reset au lancement
     }
 
     @Override
@@ -21,17 +23,14 @@ public class GameTask extends BukkitRunnable {
 
         seconds++;
 
-        // Annonce toutes les 5 minutes
-        if (seconds % 300 == 0) {
-            Bukkit.broadcastMessage(ChatColor.YELLOW + "Temps écoulé : " + (seconds / 60) + " minutes.");
-        }
-
-        // Distribution des rôles à 20 minutes (1200 secondes)
+        // Distribution des rôles à 20 minutes
         if (seconds == 1200) {
-            Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "---------------------------");
-            Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "Distribution des rôles...");
-            Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "---------------------------");
+            Bukkit.broadcastMessage("§5§lDistribution des rôles...");
             main.getRoleManager().distributeRoles();
         }
+    }
+
+    public static int getSeconds() {
+        return seconds;
     }
 }
