@@ -38,7 +38,7 @@ public class ScoreboardManager {
         obj.getScore("§fBordure: §c" + borderSize).setScore(3);
 
         obj.getScore("§7---------------- ").setScore(2);
-        obj.getScore("§eLHG UHC").setScore(1);
+        obj.getScore("§eLG UHC").setScore(1);
 
         player.setScoreboard(board);
     }
