@@ -203,6 +203,7 @@ public class DeathListener implements Listener {
                 p.getInventory().clear();
             }
             main.getRoleManager().clearRoles();
+            Bukkit.broadcast("§8[§6LG UHC§8] §7Le jeu est terminé. Retour au lobby.", "lguhc.state");
         }, 200L);
     }
 }
