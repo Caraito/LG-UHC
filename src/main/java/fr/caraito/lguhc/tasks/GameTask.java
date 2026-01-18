@@ -20,6 +20,7 @@ public class GameTask extends BukkitRunnable {
     private final Main main;
     private int seconds = 0;
     private final Map<UUID, Boolean> hasUsedInvisibilityTonight = new HashMap<>();
+    public boolean isRoleDistributionDone = false;
 
     public GameTask(Main main) { this.main = main; }
 
@@ -37,6 +38,7 @@ public class GameTask extends BukkitRunnable {
             main.getRoleManager().distributeRoles();
             String episodeName = isMeetup ? "1" : "2";
             broadcastEpisode(episodeName);
+            isRoleDistributionDone = true;
         }
 
         // 2. Gestion des épisodes suivants (Toutes les 20 minutes : 1200, 2400, 3600...)
@@ -122,4 +124,5 @@ public class GameTask extends BukkitRunnable {
     }
 
     public int getSeconds() { return seconds; }
+
 }

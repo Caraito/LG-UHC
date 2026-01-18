@@ -19,7 +19,6 @@ import java.util.*;
 public class DeathListener implements Listener {
 
     private final Main main;
-    // Stockage des joueurs en attente de réanimation
     private final Map<UUID, ItemStack[]> savedInventories = new HashMap<>();
     private final Map<UUID, ItemStack[]> savedArmor = new HashMap<>();
     private final Map<UUID, Location> deathLocations = new HashMap<>();
@@ -31,21 +30,24 @@ public class DeathListener implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
+        // --- AJOUT : Verification de la distribution ---
+        if (main.getGameTask() == null || !main.getGameTask().isRoleDistributionDone) {
+            return;
+        }
+
         Player victim = event.getEntity();
         UUID uuid = victim.getUniqueId();
         Location deathLoc = victim.getLocation();
 
-        event.setDeathMessage(""); // On gère le message plus tard
+        event.setDeathMessage("");
 
-        // 2. Sauvegarde de l'inventaire et annulation des drops immédiats
         savedInventories.put(uuid, victim.getInventory().getContents());
         savedArmor.put(uuid, victim.getInventory().getArmorContents());
         deathLocations.put(uuid, deathLoc);
         waitingForRespawn.add(uuid);
 
-        event.getDrops().clear(); // On ne drop rien pour l'instant
+        event.getDrops().clear();
 
-        // 3. Forcer le respawn et mettre en "Limbo" (Spectateur temporaire)
         Bukkit.getScheduler().runTaskLater(main, () -> {
             victim.spigot().respawn();
             victim.setGameMode(GameMode.SPECTATOR);
@@ -53,23 +55,17 @@ public class DeathListener implements Listener {
             victim.sendMessage("§c§l[Mort] §7Vous êtes entre la vie et la mort pendant §e15 secondes§7...");
         }, 1L);
 
-        // 4. Task de 15 secondes
         Bukkit.getScheduler().runTaskLater(main, () -> {
             if (waitingForRespawn.contains(uuid)) {
-                // Le joueur n'a pas été réanimé par la Sorcière ou l'Infect
                 finalizeDeath(victim);
             }
-        }, 300L); // 15 secondes = 300 ticks
+        }, 300L);
     }
 
-    /**
-     * Méthode appelée si le joueur n'est pas sauvé après 15s.
-     */
     private void finalizeDeath(Player victim) {
         UUID uuid = victim.getUniqueId();
         Location loc = deathLocations.get(uuid);
 
-        // Drop du stuff au sol
         if (loc != null && savedInventories.containsKey(uuid)) {
             for (ItemStack is : savedInventories.get(uuid)) {
                 if (is != null && is.getType() != Material.AIR) loc.getWorld().dropItemNaturally(loc, is);
@@ -86,7 +82,6 @@ public class DeathListener implements Listener {
 
         victim.sendMessage("§c§l[Mort] §7Personne ne vous a sauvé. Vous êtes définitivement spectateur.");
 
-        // 1. Annonce du rôle
         LGRole role = main.getRoleManager().getRole(uuid);
         String roleName = (role != null) ? role.getName() : "Aucun rôle";
         Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + ChatColor.GRAY + " est mort ! Il était " + ChatColor.GOLD + roleName);
@@ -94,16 +89,12 @@ public class DeathListener implements Listener {
         checkWin();
     }
 
-    /**
-     * Méthode à appeler par la Sorcière ou l'Infect pour réanimer un joueur.
-     */
     public void revivePlayer(Player victim) {
         UUID uuid = victim.getUniqueId();
         if (!waitingForRespawn.contains(uuid)) return;
 
         waitingForRespawn.remove(uuid);
 
-        // On lui rend son stuff
         victim.getInventory().setContents(savedInventories.get(uuid));
         victim.getInventory().setArmorContents(savedArmor.get(uuid));
 
@@ -111,14 +102,12 @@ public class DeathListener implements Listener {
         savedArmor.remove(uuid);
         deathLocations.remove(uuid);
 
-        // Téléportation aléatoire sécurisée
         teleportToSafeLocation(victim);
 
         victim.setGameMode(GameMode.SURVIVAL);
         victim.setHealth(20.0);
         victim.setFoodLevel(20);
 
-        // Effets de protection après réanimation
         victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 255));
         victim.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 1));
 
@@ -126,11 +115,9 @@ public class DeathListener implements Listener {
         Bukkit.broadcastMessage("§a[LG UHC] " + victim.getName() + " a été réanimé et téléporté !");
     }
 
-    // --- LOGIQUE DE TÉLÉPORTATION ALÉATOIRE SÉCURISÉE ---
-
     private void teleportToSafeLocation(Player player) {
         World world = player.getWorld();
-        int radius = 1000; // Rayon de TP (à ajuster selon ta config)
+        int radius = 1000;
         Location teleLoc = null;
         int attempts = 0;
 
@@ -161,8 +148,6 @@ public class DeathListener implements Listener {
         return m == Material.WATER || m == Material.STATIONARY_WATER ||
                 m == Material.LAVA || m == Material.STATIONARY_LAVA;
     }
-
-    // --- LOGIQUE DE FIN DE PARTIE ---
 
     private void checkWin() {
         if (!main.isState(GState.GAME)) return;

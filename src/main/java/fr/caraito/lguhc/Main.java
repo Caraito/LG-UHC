@@ -7,6 +7,7 @@ import fr.caraito.lguhc.commands.CommandStop;
 import fr.caraito.lguhc.commands.CommandWorld;
 import fr.caraito.lguhc.enums.GState;
 import fr.caraito.lguhc.listeners.DeathListener;
+import fr.caraito.lguhc.listeners.PlayerDeathBeforeRoleListener;
 import fr.caraito.lguhc.listeners.PlayerListener;
 import fr.caraito.lguhc.managers.RoleManager;
 import fr.caraito.lguhc.managers.ScoreboardManager;
@@ -42,6 +43,7 @@ public class Main extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new DeathListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerDeathBeforeRoleListener(this), this);
 
         getCommand("lgstart").setExecutor(new CommandStart(this));
         getCommand("lgworld").setExecutor(new CommandWorld(this));
