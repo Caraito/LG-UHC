@@ -28,26 +28,26 @@ public class GameTask extends BukkitRunnable {
         if (!main.isState(GState.GAME)) return;
         seconds++;
 
-        boolean isMeetup = main.getConfig().getBoolean("meetup");
-        int roleTime = isMeetup ? 300 : 1200; // 5 min vs 20 min
-
-        // Distribution des rôles
-        if (seconds == roleTime) {
+        // Gestion des épisodes (20 min = 1200s)
+        if (seconds == 1200) {
             main.getRoleManager().distributeRoles();
-            String epName = isMeetup ? "1" : "2";
-            broadcastEpisodeHeader(epName);
-        }
-        // Gestion des épisodes suivants
-        else if (seconds > roleTime && (seconds - roleTime) % 1200 == 0) {
-            int epNumber = isMeetup ? ((seconds - roleTime) / 1200) + 1 : (seconds / 1200) + 1;
-            broadcastEpisodeHeader(String.valueOf(epNumber));
+            Bukkit.broadcastMessage("§e§m---------------------------------");
+            Bukkit.broadcastMessage("§fDébut de l'§6Épisode 2 §f! Les rôles sont distribués.");
+            Bukkit.broadcastMessage("§e§m---------------------------------");
+        } else if (seconds > 1200 && seconds % 1200 == 0) {
+            int episode = (seconds / 1200) + 1;
+            Bukkit.broadcastMessage("§e§m---------------------------------");
+            Bukkit.broadcastMessage("§fDébut de l'§6Épisode " + episode);
+            Bukkit.broadcastMessage("§e§m---------------------------------");
 
+            // Reset du pouvoir du Salvateur pour le nouvel épisode
             for (LGRole role : main.getRoleManager().getRoles().values()) {
-                if (role instanceof RoleSalvateur) ((RoleSalvateur) role).setUsedThisEpisode(false);
+                if (role instanceof RoleSalvateur) {
+                    ((RoleSalvateur) role).setUsedThisEpisode(false);
+                }
             }
         }
 
-        // --- Logique Cycles / Pouvoirs ---
         World world = Bukkit.getWorlds().get(0);
         boolean isNight = (world.getTime() >= 13000 && world.getTime() <= 23000);
 
@@ -77,23 +77,15 @@ public class GameTask extends BukkitRunnable {
 
                 if (hasArmor && p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
                     p.removePotionEffect(PotionEffectType.INVISIBILITY);
-                    p.sendMessage("§c§l[Perfide] §fArmure remise, vous êtes de nouveau §avisible§f.");
+                    p.sendMessage("§c§l[Perfide] §fArmure remise, vous êtes §avisible§f.");
                 }
-            } else if (role.getCamp() == RoleCamp.LOUPS) {
-                if (isNight) {
-                    if (!p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE))
-                        p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, 0, false, false));
-                } else {
-                    p.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
-                }
+            } else if (role.getCamp() == RoleCamp.LOUPS && isNight) {
+                if (!p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE))
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, 0, false, false));
+            } else if (role.getCamp() == RoleCamp.LOUPS && !isNight) {
+                p.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
             }
         }
-    }
-
-    private void broadcastEpisodeHeader(String ep) {
-        Bukkit.broadcastMessage("§e§m---------------------------------");
-        Bukkit.broadcastMessage("§fDébut de l'§6Épisode " + ep + " §f! Les rôles sont distribués.");
-        Bukkit.broadcastMessage("§e§m---------------------------------");
     }
 
     public int getSeconds() { return seconds; }

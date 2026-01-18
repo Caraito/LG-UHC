@@ -1,6 +1,5 @@
 package fr.caraito.lguhc.commands;
 
-import fr.caraito.lguhc.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -11,9 +10,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class CommandSpawn implements CommandExecutor {
-
-    public CommandSpawn(Main main) {
-    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {

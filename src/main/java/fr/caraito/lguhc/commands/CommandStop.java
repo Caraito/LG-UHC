@@ -33,13 +33,18 @@ public class CommandStop implements CommandExecutor {
                 player.teleport(Bukkit.getWorld("world").getSpawnLocation());
                 player.setGameMode(GameMode.ADVENTURE);
                 player.getInventory().clear();
+                player.setHealth(20.0);
+                player.setFoodLevel(20);
             }
 
             main.getRoleManager().clearRoles();
             main.getWorldManager().unloadCurrentWorld();
             main.setState(GState.LOBBY);
-            sender.sendMessage(ChatColor.GREEN + "Partie arrêtée et chrono stoppé.");
+            sender.sendMessage(ChatColor.GREEN + "Partie arrêtée !");
         }
         return true;
     }
+
+
+
 }
