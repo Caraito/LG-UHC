@@ -7,6 +7,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.ChatColor;
 import org.bukkit.enchantments.Enchantment;
@@ -36,6 +38,21 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
         }
     }
+
+    @EventHandler
+    public void onEat(FoodLevelChangeEvent event) {
+        if (main.isState(GState.LOBBY)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onSpawn(EntitySpawnEvent event) {
+        if (main.isState(GState.LOBBY)) {
+            event.setCancelled(true);
+        }
+    }
+
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
@@ -76,7 +93,7 @@ public class PlayerListener implements Listener {
                 if (b.getType() == Material.LOG || b.getType() == Material.LOG_2) {
                     b.breakNaturally();
                     // 5% de chance de faire tomber une pomme par bûche cassée
-                    if (new Random().nextInt(100) < 5) {
+                    if (new Random().nextInt(100) < 20) {
                         b.getWorld().dropItemNaturally(b.getLocation(), new ItemStack(Material.APPLE));
                     }
                 } else {

@@ -30,12 +30,14 @@ public class Main extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
+        saveDefaultConfig();
+
         setState(GState.LOBBY);
         this.worldManager = new WorldManager();
         this.roleManager = new RoleManager();
         this.sbManager = new ScoreboardManager();
 
-        worldManager.deleteAllWorldFolders();
+
 
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new DeathListener(this), this);

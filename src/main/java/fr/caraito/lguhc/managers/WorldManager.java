@@ -2,7 +2,9 @@ package fr.caraito.lguhc.managers;
 
 import fr.caraito.lguhc.Main;
 import org.bukkit.*;
+import org.bukkit.block.Biome;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import java.io.File;
 import java.util.ArrayList;
@@ -11,8 +13,20 @@ import java.util.Random;
 
 public class WorldManager {
 
-    private final List<String> preparedWorlds = new ArrayList<>();
+    private final List<String> preparedWorlds;
     private World currentGameWorld;
+
+    public WorldManager() {
+        // Chargement de la liste depuis la config au démarrage
+        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds"));
+        Bukkit.getLogger().info("[LGUHC] " + preparedWorlds.size() + " mondes chargés depuis la config.");
+    }
+
+    // Petite méthode utilitaire pour sauvegarder la liste dans le fichier
+    private void saveToConfig() {
+        Main.getInstance().getConfig().set("prepared-worlds", preparedWorlds);
+        Main.getInstance().saveConfig();
+    }
 
     public void generateMultipleWorlds(int amount) {
         new BukkitRunnable() {
@@ -29,7 +43,11 @@ public class WorldManager {
                 creator.seed(new Random().nextLong());
                 World world = creator.createWorld();
                 setupUHCWorld(world);
+
+                // Ajout à la liste ET sauvegarde config
                 preparedWorlds.add(name);
+                saveToConfig();
+
                 count++;
             }
         }.runTaskTimer(Main.getInstance(), 0L, 100L);
@@ -46,38 +64,40 @@ public class WorldManager {
     public boolean prepareAndTeleport(int radius) {
         if (preparedWorlds.isEmpty()) return false;
 
+        // On retire de la liste ET on sauvegarde config
         String worldName = preparedWorlds.remove(0);
+        saveToConfig();
+
         this.currentGameWorld = Bukkit.getWorld(worldName);
+
+        // Si le monde n'est pas chargé en RAM (après reboot), on le charge
+        if (this.currentGameWorld == null) {
+            this.currentGameWorld = Bukkit.createWorld(new WorldCreator(worldName));
+        }
+
         if (this.currentGameWorld == null) return false;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            Location teleLoc;
+            Location teleLoc = null;
             int attempts = 0;
 
             do {
                 double x = (Math.random() * radius * 2) - radius;
                 double z = (Math.random() * radius * 2) - radius;
-
                 currentGameWorld.getChunkAt((int)x >> 4, (int)z >> 4).load();
-
                 double y = currentGameWorld.getHighestBlockYAt((int)x, (int)z);
-                teleLoc = new Location(currentGameWorld, x + 0.5, y + 1, z + 0.5);
-
+                teleLoc = new Location(currentGameWorld, x + 0.5, y + 1.1, z + 0.5);
                 attempts++;
-                if (attempts > 50) break;
-
+                if (attempts > 250) break;
             } while (!isSafe(teleLoc));
 
             player.teleport(teleLoc);
             player.setHealth(20.0);
             player.getInventory().clear();
             player.setGameMode(GameMode.SURVIVAL);
+            player.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
 
-            // --- AJOUT : STARTING KIT ---
-            player.getInventory().addItem(new org.bukkit.inventory.ItemStack(Material.COOKED_BEEF, 64));
-            // ----------------------------
-
-            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté dans le monde de jeu !");
+            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté !");
         }
         return true;
     }
@@ -85,17 +105,13 @@ public class WorldManager {
     public void unloadCurrentWorld() {
         if (this.currentGameWorld != null) {
             String name = currentGameWorld.getName();
-
             for (Player p : currentGameWorld.getPlayers()) {
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
             }
-
             Bukkit.unloadWorld(this.currentGameWorld, false);
             File worldFolder = new File(Bukkit.getWorldContainer(), name);
             deleteFolderRecursive(worldFolder);
-
             this.currentGameWorld = null;
-            Bukkit.getLogger().info("[LGUHC] Monde de jeu supprimé.");
         }
     }
 
@@ -109,6 +125,9 @@ public class WorldManager {
                 }
             }
         }
+        // On vide aussi la config
+        preparedWorlds.clear();
+        saveToConfig();
     }
 
     private void deleteFolderRecursive(File path) {
@@ -127,17 +146,10 @@ public class WorldManager {
     private boolean isSafe(Location location) {
         Material blockType = location.getBlock().getType();
         Material underType = location.clone().add(0, -1, 0).getBlock().getType();
-
-        if (blockType == Material.WATER || blockType == Material.STATIONARY_WATER ||
-                blockType == Material.LAVA || blockType == Material.STATIONARY_LAVA) {
-            return false;
-        }
-
-        if (underType == Material.WATER || underType == Material.STATIONARY_WATER ||
-                underType == Material.LAVA || underType == Material.STATIONARY_LAVA) {
-            return false;
-        }
-
+        Biome biome = location.getBlock().getBiome();
+        if (biome.name().contains("OCEAN") || biome.name().contains("RIVER")) return false;
+        if (blockType.name().contains("WATER") || blockType.name().contains("LAVA") ||
+                underType.name().contains("WATER") || underType.name().contains("LAVA")) return false;
         return blockType == Material.AIR;
     }
 
