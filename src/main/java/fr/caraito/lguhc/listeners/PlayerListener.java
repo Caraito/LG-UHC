@@ -4,6 +4,7 @@ import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.enums.GState;
 import fr.caraito.lguhc.roles.LGRole;
 import fr.caraito.lguhc.roles.RoleSalvateur;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -15,9 +16,13 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -56,7 +61,6 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
             return;
         }
-
         if (!main.isState(GState.GAME)) return;
 
         Player player = event.getPlayer();
@@ -73,7 +77,7 @@ public class PlayerListener implements Listener {
             diamondsMined.put(player.getUniqueId(), count + 1);
         }
 
-        // 2. TIMBER (Arbres)
+        // 2. TIMBER
         if (block.getType() == Material.LOG || block.getType() == Material.LOG_2) {
             for (int i = 0; i <= 20; i++) {
                 org.bukkit.block.Block b = block.getRelative(0, i, 0);
@@ -85,7 +89,7 @@ public class PlayerListener implements Listener {
             }
         }
 
-        // 3. CUTCLEAN (Fer / Or)
+        // 3. CUTCLEAN
         if (block.getType() == Material.IRON_ORE) {
             block.setType(Material.AIR);
             block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 2));
@@ -105,24 +109,85 @@ public class PlayerListener implements Listener {
         if (main.isState(GState.LOBBY)) event.setCancelled(true);
     }
 
-    // 4. POUVOIR DU SALVATEUR
+    // --- NOUVEAU POUVOIR SALVATEUR (GUI) ---
+
     @EventHandler
     public void onSalvateurInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        ItemStack item = player.getItemInHand();
+        ItemStack item = event.getItem();
 
-        if ((event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) &&
-                item != null && item.getType() == Material.IRON_DOOR && item.hasItemMeta()) {
+        if (item == null || item.getType() == Material.AIR) return;
+        if (!item.hasItemMeta() || !item.getItemMeta().getDisplayName().contains("Bouclier de Fortune")) return;
 
-            if (item.getItemMeta().getDisplayName().equals("§a§lBouclier de Fortune §7(Usage unique)")) {
-                LGRole role = main.getRoleManager().getRole(player.getUniqueId());
-                if (role instanceof RoleSalvateur) {
-                    event.setCancelled(true);
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 1));
-                    player.sendMessage("§a§l[Salvateur] §fBouclier activé ! §bRésistance II §f(30s).");
-                    player.setItemInHand(null);
-                }
+        event.setCancelled(true);
+
+        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            LGRole role = main.getRoleManager().getRole(player.getUniqueId());
+            if (!(role instanceof RoleSalvateur)) return;
+
+            RoleSalvateur salvateur = (RoleSalvateur) role;
+
+            // Vérification des 5 premières minutes de l'épisode (300 sec)
+            int secondsInEpisode = main.getGameTask().getSeconds() % 1200;
+            if (secondsInEpisode > 300) {
+                player.sendMessage("§cErreur : Vous ne pouvez utiliser votre pouvoir que durant les 5 premières minutes de l'épisode.");
+                return;
             }
+
+            if (salvateur.isUsedThisEpisode()) {
+                player.sendMessage("§cErreur : Vous avez déjà utilisé votre pouvoir pour cet épisode.");
+                return;
+            }
+
+            openSalvateurGUI(player);
         }
+    }
+
+    private void openSalvateurGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, "§8Protection du Salvateur");
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            meta.setOwner(target.getName());
+            meta.setDisplayName("§e" + target.getName());
+            head.setItemMeta(meta);
+            gui.addItem(head);
+        }
+        player.openInventory(gui);
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getInventory() == null || !event.getView().getTitle().equals("§8Protection du Salvateur")) return;
+        event.setCancelled(true);
+
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+        ItemStack clicked = event.getCurrentItem();
+
+        if (clicked == null || clicked.getType() != Material.SKULL_ITEM) return;
+
+        String targetName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+        Player target = Bukkit.getPlayer(targetName);
+
+        if (target == null) return;
+
+        LGRole role = main.getRoleManager().getRole(player.getUniqueId());
+        if (!(role instanceof RoleSalvateur)) return;
+        RoleSalvateur salvateur = (RoleSalvateur) role;
+
+        if (target.getUniqueId().equals(salvateur.getLastProtected())) {
+            player.sendMessage("§cErreur : Vous ne pouvez pas protéger la même personne deux fois d'affilée.");
+            return;
+        }
+
+        // Application
+        target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 1));
+        target.sendMessage("§a§l[Salvateur] §fLe Salvateur vous a protégé ! §bRésistance II §fpendant 30s.");
+        player.sendMessage("§a§l[Salvateur] §fVous avez protégé §e" + target.getName() + "§f.");
+
+        salvateur.setLastProtected(target.getUniqueId());
+        salvateur.setUsedThisEpisode(true);
+        player.closeInventory();
     }
 }

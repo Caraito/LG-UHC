@@ -11,6 +11,11 @@ public class RoleManager {
 
     private Map<UUID, LGRole> playerRoles = new HashMap<>();
 
+    // --- AJOUT DE CETTE MÉTHODE POUR FIX L'ERREUR ---
+    public Map<UUID, LGRole> getRoles() {
+        return playerRoles;
+    }
+
     public void distributeRoles() {
         List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
         Collections.shuffle(players);
@@ -18,16 +23,13 @@ public class RoleManager {
         if (players.isEmpty()) return;
 
         // --- LOGIQUE DE DISTRIBUTION ADAPTATIVE ---
-        // Si on est seul : on prend un rôle au hasard
         if (players.size() == 1) {
             assign(players.get(0), new RoleSalvateur(Main.getInstance()));
         }
-        // Si on est 2 ou plus
         else {
             assign(players.remove(0), new RoleSalvateur(Main.getInstance()));
             assign(players.remove(0), new RoleLGPerfide(Main.getInstance()));
 
-            // Reste des joueurs
             for (Player player : players) {
                 if (new Random().nextBoolean()) {
                     assign(player, new RoleVillageois(Main.getInstance()));
