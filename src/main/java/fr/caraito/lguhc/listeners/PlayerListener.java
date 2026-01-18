@@ -18,6 +18,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
@@ -119,6 +120,11 @@ public class PlayerListener implements Listener {
         if (main.isState(GState.LOBBY)) event.setCancelled(true);
     }
 
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent event) {
+        if (main.isState(GState.GAME)) event.setCancelled(true);
+    }
+
     // --- NOUVEAU POUVOIR SALVATEUR (GUI) ---
 
     @EventHandler
@@ -137,8 +143,17 @@ public class PlayerListener implements Listener {
 
             RoleSalvateur salvateur = (RoleSalvateur) role;
 
-            // Vérification des 5 premières minutes de l'épisode (300 sec)
-            int secondsInEpisode = main.getGameTask().getSeconds() % 1200;
+            // --- CORRECTION LOGIQUE MEETUP ---
+            boolean isMeetup = main.getConfig().getBoolean("meetup", false);
+            int roleTime = isMeetup ? 300 : 1200;
+            int totalSeconds = main.getGameTask().getSeconds();
+
+            // On vérifie si on est bien après la distribution des rôles
+            if (totalSeconds < roleTime) return;
+
+            // On calcule le temps écoulé dans l'épisode actuel par rapport au point de départ (roleTime)
+            int secondsInEpisode = (totalSeconds - roleTime) % 1200;
+
             if (secondsInEpisode > 300) {
                 player.sendMessage("§cErreur : Vous ne pouvez utiliser votre pouvoir que durant les 5 premières minutes de l'épisode.");
                 return;
@@ -204,8 +219,8 @@ public class PlayerListener implements Listener {
         }
 
         // Application
-        target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 1));
-        target.sendMessage("§a§l[Salvateur] §fLe Salvateur vous a protégé ! §bRésistance II §fpendant 30s.");
+        target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 20*20*60, 0));
+        target.sendMessage("§a§l[Salvateur] §fLe Salvateur vous a protégé ! §bRésistance I §fpendant 20 minutes.");
         player.sendMessage("§a§l[Salvateur] §fVous avez protégé §e" + target.getName() + "§f.");
 
         salvateur.setLastProtected(target.getUniqueId());

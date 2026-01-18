@@ -30,7 +30,7 @@ public class RoleSalvateur extends LGRole {
     @Override
     public void onDistribute(Player player) {
         player.sendMessage("§a§l[Rôle] §fVous êtes le §aSalvateur§f !");
-        player.sendMessage("§7Pouvoir : §eUtilisez votre §6Étoile §7pour donner §bRésistance II §7pendant 30 secondes.");
+        player.sendMessage("§7Pouvoir : §eUtilisez votre §6Étoile §7pour donner §bRésistance I §7pendant 20 minutes.");
         player.sendMessage("§7Contraintes : §fUne fois par épisode, durant les §65 premières minutes§f. Interdiction de protéger la même personne 2x d'affilée.");
 
         ItemStack shield = new ItemStack(Material.NETHER_STAR);

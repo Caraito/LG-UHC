@@ -97,6 +97,7 @@ public class DeathListener implements Listener {
                 }
                 p.setGameMode(GameMode.ADVENTURE);
                 p.getInventory().clear();
+                p.getInventory().setArmorContents(null);
                 p.setHealth(20.0);
                 p.setFoodLevel(20);
             }

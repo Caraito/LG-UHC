@@ -33,6 +33,7 @@ public class CommandStop implements CommandExecutor {
                 player.teleport(Bukkit.getWorld("world").getSpawnLocation());
                 player.setGameMode(GameMode.ADVENTURE);
                 player.getInventory().clear();
+                player.getInventory().setArmorContents(null);
                 player.setHealth(20.0);
                 player.setFoodLevel(20);
             }

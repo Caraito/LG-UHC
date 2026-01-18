@@ -57,14 +57,14 @@ public class CommandStart implements CommandExecutor {
     private void giveMeetupStuff(Player p) {
         p.getInventory().clear();
         // Armure
-        p.getInventory().setChestplate(createEnchanted(Material.DIAMOND_CHESTPLATE, Enchantment.PROTECTION_ENVIRONMENTAL, 2, Enchantment.DURABILITY, 2));
-        p.getInventory().setBoots(createEnchanted(Material.DIAMOND_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 2, Enchantment.DURABILITY, 2));
-        p.getInventory().setLeggings(createEnchanted(Material.IRON_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 3, Enchantment.DURABILITY, 2));
-        p.getInventory().setHelmet(createEnchanted(Material.IRON_HELMET, Enchantment.PROTECTION_ENVIRONMENTAL, 3, Enchantment.DURABILITY, 2));
+        p.getInventory().setChestplate(createEnchanted(Material.DIAMOND_CHESTPLATE, Enchantment.PROTECTION_ENVIRONMENTAL, 2));
+        p.getInventory().setBoots(createEnchanted(Material.DIAMOND_BOOTS, Enchantment.PROTECTION_ENVIRONMENTAL, 2));
+        p.getInventory().setLeggings(createEnchanted(Material.IRON_LEGGINGS, Enchantment.PROTECTION_ENVIRONMENTAL, 2));
+        p.getInventory().setHelmet(createEnchanted(Material.IRON_HELMET, Enchantment.PROTECTION_ENVIRONMENTAL, 2));
         // Outils
-        p.getInventory().addItem(createEnchanted(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 3, Enchantment.DURABILITY, 3));
-        p.getInventory().addItem(createEnchanted(Material.DIAMOND_PICKAXE, Enchantment.DIG_SPEED, 3, Enchantment.DURABILITY, 3));
-        p.getInventory().addItem(createEnchanted(Material.BOW, Enchantment.ARROW_DAMAGE, 3, null, 0));
+        p.getInventory().addItem(createEnchanted(Material.IRON_SWORD, Enchantment.DAMAGE_ALL, 4));
+        p.getInventory().addItem(createEnchanted(Material.DIAMOND_PICKAXE, Enchantment.DIG_SPEED, 3));
+        p.getInventory().addItem(createEnchanted(Material.BOW, Enchantment.ARROW_DAMAGE, 3));
         // Consommables
         p.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 20));
         p.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
@@ -73,11 +73,10 @@ public class CommandStart implements CommandExecutor {
         for(int i=0; i<5; i++) p.getInventory().addItem(new ItemStack(Material.ARROW, 64));
     }
 
-    private ItemStack createEnchanted(Material m, Enchantment e1, int l1, Enchantment e2, int l2) {
+    private ItemStack createEnchanted(Material m, Enchantment e1, int l1) {
         ItemStack item = new ItemStack(m);
         ItemMeta meta = item.getItemMeta();
         if(e1 != null) meta.addEnchant(e1, l1, true);
-        if(e2 != null) meta.addEnchant(e2, l2, true);
         item.setItemMeta(meta);
         return item;
     }
