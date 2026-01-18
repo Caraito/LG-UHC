@@ -29,6 +29,7 @@ public class RoleSalvateur extends LGRole {
 
         ItemStack shield = new ItemStack(Material.IRON_DOOR);
         ItemMeta meta = shield.getItemMeta();
+        // On utilise un nom très précis pour l'identifier plus tard
         meta.setDisplayName("§a§lBouclier de Fortune §7(Usage unique)");
         shield.setItemMeta(meta);
 

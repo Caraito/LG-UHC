@@ -26,7 +26,6 @@ public class RoleLGPerfide extends LGRole {
         player.sendMessage("§c§l[Rôle] §fVous êtes le §cLoup-Garou Perfide§f !");
         player.sendMessage("§7Particularité : §eVous possédez la §cForce I §een permanence.");
 
-        // On donne la force immédiatement
         player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, false, false));
     }
 }

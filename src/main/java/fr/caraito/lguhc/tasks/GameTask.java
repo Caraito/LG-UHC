@@ -31,8 +31,10 @@ public class GameTask extends BukkitRunnable {
             if (role == null || role.getCamp() != RoleCamp.LOUPS) continue;
 
             if (role instanceof RoleLGPerfide) {
-                if (!p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE))
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, 0, false, false));
+                // Le Loup-Garou Perfide ne doit jamais avoir force
+
+                continue;
+
             } else if (isNight) {
                 if (!p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE))
                     p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, 0, false, false));

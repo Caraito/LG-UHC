@@ -1,11 +1,12 @@
 package fr.caraito.lguhc.roles;
 
+import fr.caraito.lguhc.Main;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 public class RoleVillageois extends LGRole {
 
-    public RoleVillageois() {
+    public RoleVillageois(Main instance) {
         super("Simple Villageois", RoleCamp.VILLAGE, "Votre but est d'éliminer tous les Loups-Garous.");
     }
 
