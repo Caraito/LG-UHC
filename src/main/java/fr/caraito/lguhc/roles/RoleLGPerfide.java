@@ -2,8 +2,6 @@ package fr.caraito.lguhc.roles;
 
 import fr.caraito.lguhc.Main;
 import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 public class RoleLGPerfide extends LGRole {
 
@@ -24,8 +22,9 @@ public class RoleLGPerfide extends LGRole {
     @Override
     public void onDistribute(Player player) {
         player.sendMessage("§c§l[Rôle] §fVous êtes le §cLoup-Garou Perfide§f !");
-        player.sendMessage("§7Particularité : §eVous possédez la §cForce I §een permanence.");
+        player.sendMessage("§7Particularité : §eVous pouvez devenir §binvisible §ela nuit en retirant votre armure.");
+        player.sendMessage("§7Note : §cVous ne possédez pas de bonus de force, même la nuit.");
 
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, false, false));
+        // On retire l'ajout de PotionEffect ici car il ne doit jamais avoir force
     }
 }

@@ -52,6 +52,7 @@ public class WorldManager {
     public void setupUHCWorld(World world) {
         if (world == null) return;
         world.setGameRuleValue("naturalRegeneration", "false");
+        world.setGameRuleValue("doImmediateRespawn", "true");
         world.setDifficulty(Difficulty.HARD);
         world.getWorldBorder().setCenter(0, 0);
         world.getWorldBorder().setSize(4000);
