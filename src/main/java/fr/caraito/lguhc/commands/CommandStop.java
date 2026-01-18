@@ -10,6 +10,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+
 public class CommandStop implements CommandExecutor {
 
     private final Main main;
@@ -41,7 +43,9 @@ public class CommandStop implements CommandExecutor {
             main.getRoleManager().clearRoles();
             main.getWorldManager().unloadCurrentWorld();
             main.setState(GState.LOBBY);
-            sender.sendMessage(ChatColor.GREEN + "Partie arrêtée !");
+            Bukkit.broadcastMessage(ChatColor.GREEN + "Partie arrêtée !");
+            int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds")).size();
+            Bukkit.broadcastMessage("§7Mondes préparés restants : §e" + preparedWorlds);
         }
         return true;
     }

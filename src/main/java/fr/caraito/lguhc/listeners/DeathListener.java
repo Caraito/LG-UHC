@@ -6,6 +6,7 @@ import fr.caraito.lguhc.roles.LGRole;
 import fr.caraito.lguhc.roles.RoleCamp;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -126,7 +127,7 @@ public class DeathListener implements Listener {
             double x = (Math.random() * radius * 2) - radius;
             double z = (Math.random() * radius * 2) - radius;
             double y = world.getHighestBlockYAt((int) x, (int) z);
-            teleLoc = new Location(world, x + 0.5, y, z + 0.5);
+            teleLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
 
             if (attempts > 100) break;
         } while (!isSafe(teleLoc));
@@ -135,14 +136,26 @@ public class DeathListener implements Listener {
     }
 
     private boolean isSafe(Location loc) {
-        Material floor = loc.clone().add(0, -1, 0).getBlock().getType();
+        Block ground = loc.clone().add(0, -1, 0).getBlock();
+        Block feet = loc.getBlock();
+        Block head = loc.clone().add(0, 1, 0).getBlock();
+
+        Material groundType = ground.getType();
         Biome biome = loc.getBlock().getBiome();
 
         if (biome.name().contains("OCEAN") || biome.name().contains("RIVER")) return false;
-        if (isLiquid(floor) || floor == Material.AIR) return false;
 
-        return floor.isSolid();
+        if (!groundType.isSolid()) return false;
+        if (groundType == Material.LAVA || groundType == Material.STATIONARY_LAVA) return false;
+        if (groundType == Material.FIRE) return false;
+        if (groundType == Material.CACTUS) return false;
+
+        if (feet.getType() != Material.AIR) return false;
+        if (head.getType() != Material.AIR) return false;
+
+        return true;
     }
+
 
     private boolean isLiquid(Material m) {
         return m == Material.WATER || m == Material.STATIONARY_WATER ||

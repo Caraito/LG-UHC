@@ -2,118 +2,156 @@ package fr.caraito.lguhc.listeners;
 
 import fr.caraito.lguhc.Main;
 import org.bukkit.*;
-import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerDeathBeforeRoleListener implements Listener {
+
     private final Main main;
 
-    // Maps pour stocker l'inventaire et l'armure
+    // Sauvegarde inventaire
     private final Map<UUID, ItemStack[]> savedItems = new HashMap<>();
     private final Map<UUID, ItemStack[]> savedArmor = new HashMap<>();
+
+    // Sauvegarde monde avant la mort
+    private final Map<UUID, World> savedWorld = new HashMap<>();
+
+    // Joueurs à ressusciter
+    private final Set<UUID> reviveQueue = new HashSet<>();
 
     public PlayerDeathBeforeRoleListener(Main main) {
         this.main = main;
     }
 
+    /* ===================== DEATH ===================== */
+
     @EventHandler
-    public void onDeathBeforeRoles(PlayerDeathEvent event) {
-        // On vérifie si la distribution n'est PAS encore faite
-        if (main.getGameTask() != null && !main.getGameTask().isRoleDistributionDone) {
-            Player victim = event.getEntity();
-            UUID uuid = victim.getUniqueId();
+    public void onDeath(PlayerDeathEvent event) {
+        if (main.getGameTask() == null) return;
+        if (main.getGameTask().isRoleDistributionDone) return;
 
-            // 1. SAUVEGARDE DU STUFF
-            savedItems.put(uuid, victim.getInventory().getContents());
-            savedArmor.put(uuid, victim.getInventory().getArmorContents());
+        Player player = event.getEntity();
+        UUID uuid = player.getUniqueId();
 
-            // On vide les messages et les loots au sol
-            event.setDeathMessage(null);
-            event.getDrops().clear();
+        savedItems.put(uuid, player.getInventory().getContents());
+        savedArmor.put(uuid, player.getInventory().getArmorContents());
+        savedWorld.put(uuid, player.getWorld());
 
-            // Resurrection immediate (1 tick de délai pour laisser Bukkit traiter la mort)
-            Bukkit.getScheduler().runTaskLater(main, () -> {
-                victim.spigot().respawn();
+        reviveQueue.add(uuid);
 
-                // 2. RESET TOTAL POUR STOPPER LES DÉGATS (Feu, Chute, Potions)
-                victim.setFireTicks(0);
-                victim.setFallDistance(0.0f);
-                for (PotionEffect effect : victim.getActivePotionEffects()) {
-                    victim.removePotionEffect(effect.getType());
-                }
-
-                // 3. TÉLÉPORTATION SÉCURISÉE
-                teleportToSafeLocation(victim);
-
-                // 4. RESTITUTION DU STUFF
-                if (savedItems.containsKey(uuid)) {
-                    victim.getInventory().setContents(savedItems.get(uuid));
-                    victim.getInventory().setArmorContents(savedArmor.get(uuid));
-                    savedItems.remove(uuid);
-                    savedArmor.remove(uuid);
-                }
-
-                // Reset vie et faim
-                victim.setHealth(20.0);
-                victim.setFoodLevel(20);
-                victim.setGameMode(GameMode.SURVIVAL);
-
-                // Petit message et effets
-                victim.sendMessage("§a§l[LG UHC] §7Vous êtes mort avant les rôles. Vous réapparaissez avec votre stuff !");
-                Bukkit.broadcastMessage("§e§l[LG UHC] §7" + victim.getName() + " §aest ressuscité(e) après une mort prématurée.");
-
-                // Super résistance pour annuler tout dégât résiduel de la mort précédente
-                victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 255));
-                victim.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 1));
-            }, 1L);
-        }
+        event.getDrops().clear();
+        event.setDeathMessage(null);
     }
 
-    private void teleportToSafeLocation(Player player) {
-        World world = player.getWorld();
-        int radius = 1000;
-        Location teleLoc = null;
-        int attempts = 0;
+    /* ===================== RESPAWN ===================== */
 
-        do {
-            attempts++;
-            double x = (Math.random() * radius * 2) - radius;
-            double z = (Math.random() * radius * 2) - radius;
+    @EventHandler
+    public void onRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
 
-            // On s'assure que le chunk est chargé pour éviter getHighestBlockYAt à 0
-            world.getChunkAt((int)x >> 4, (int)z >> 4).load();
+        if (!reviveQueue.contains(uuid)) return;
 
-            double y = world.getHighestBlockYAt((int) x, (int) z);
-            teleLoc = new Location(world, x + 0.5, y, z + 0.5);
+        reviveQueue.remove(uuid);
 
-            if (attempts > 100) break;
-        } while (!isSafe(teleLoc));
+        Bukkit.getScheduler().runTask(main, () -> {
 
-        player.teleport(teleLoc);
+            // Reset joueur
+            player.setFireTicks(0);
+            player.setFallDistance(0);
+            player.setHealth(20.0);
+            player.setFoodLevel(20);
+            player.setGameMode(GameMode.SURVIVAL);
+
+            for (PotionEffect effect : player.getActivePotionEffects()) {
+                player.removePotionEffect(effect.getType());
+            }
+
+            // Monde UHC
+            World world = savedWorld.remove(uuid);
+
+            // Position aléatoire
+            int radius = 1800;
+            Random random = new Random();
+
+            int x = random.nextInt(radius * 2) - radius;
+            int z = random.nextInt(radius * 2) - radius;
+
+            // Charger le chunk
+            world.getChunkAt(x >> 4, z >> 4).load();
+
+            int y = world.getHighestBlockYAt(x, z);
+
+            // Toujours y + 1
+            Location baseLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
+
+            Location safeLoc = findSafeLocationAround(baseLoc);
+            player.teleport(safeLoc);
+
+            // Restauration inventaire
+            if (savedItems.containsKey(uuid)) {
+                player.getInventory().setContents(savedItems.remove(uuid));
+                player.getInventory().setArmorContents(savedArmor.remove(uuid));
+            }
+
+            // Protection courte
+            player.addPotionEffect(
+                    new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, 5)
+            );
+
+            player.sendMessage("§a§l[LG UHC] §7Mort avant les rôles — vous avez été ressuscité avec votre stuff.");
+        });
+    }
+
+    /* ===================== SAFE LOCATION ===================== */
+
+    private Location findSafeLocationAround(Location base) {
+        World world = base.getWorld();
+        Random random = new Random();
+        int radius = 30;
+
+        for (int i = 0; i < 200; i++) {
+            int x = base.getBlockX() + random.nextInt(radius * 2) - radius;
+            int z = base.getBlockZ() + random.nextInt(radius * 2) - radius;
+
+            world.getChunkAt(x >> 4, z >> 4).load();
+
+            int y = world.getHighestBlockYAt(x, z);
+            Location loc = new Location(world, x + 0.5, y + 1, z + 0.5);
+
+            if (isSafe(loc)) {
+                return loc;
+            }
+        }
+
+        // Fallback
+        return base.clone().add(0, 1, 0);
     }
 
     private boolean isSafe(Location loc) {
-        Material floor = loc.clone().add(0, -1, 0).getBlock().getType();
-        Biome biome = loc.getBlock().getBiome();
+        Block ground = loc.clone().add(0, -1, 0).getBlock();
+        Block feet = loc.getBlock();
+        Block head = loc.clone().add(0, 1, 0).getBlock();
 
-        if (biome.name().contains("OCEAN") || biome.name().contains("RIVER")) return false;
-        if (isLiquid(floor) || floor == Material.AIR) return false;
+        Material groundType = ground.getType();
 
-        return floor.isSolid();
-    }
+        if (groundType == Material.AIR) return false;
+        if (groundType == Material.LAVA || groundType == Material.STATIONARY_LAVA) return false;
+        if (groundType == Material.FIRE) return false;
+        if (groundType == Material.CACTUS) return false;
 
-    private boolean isLiquid(Material m) {
-        return m == Material.WATER || m == Material.STATIONARY_WATER ||
-                m == Material.LAVA || m == Material.STATIONARY_LAVA;
+        if (feet.getType() != Material.AIR) return false;
+        if (head.getType() != Material.AIR) return false;
+
+        return groundType.isSolid();
     }
 }
