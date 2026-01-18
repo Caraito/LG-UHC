@@ -35,10 +35,7 @@ public class DeathListener implements Listener {
         UUID uuid = victim.getUniqueId();
         Location deathLoc = victim.getLocation();
 
-        // 1. Annonce du rôle
-        LGRole role = main.getRoleManager().getRole(uuid);
-        String roleName = (role != null) ? role.getName() : "Aucun rôle";
-        event.setDeathMessage(ChatColor.RED + victim.getName() + ChatColor.GRAY + " est mort ! Il était " + ChatColor.GOLD + roleName);
+        event.setDeathMessage(""); // On gère le message plus tard
 
         // 2. Sauvegarde de l'inventaire et annulation des drops immédiats
         savedInventories.put(uuid, victim.getInventory().getContents());
@@ -88,6 +85,12 @@ public class DeathListener implements Listener {
         deathLocations.remove(uuid);
 
         victim.sendMessage("§c§l[Mort] §7Personne ne vous a sauvé. Vous êtes définitivement spectateur.");
+
+        // 1. Annonce du rôle
+        LGRole role = main.getRoleManager().getRole(uuid);
+        String roleName = (role != null) ? role.getName() : "Aucun rôle";
+        Bukkit.broadcastMessage(ChatColor.RED + victim.getName() + ChatColor.GRAY + " est mort ! Il était " + ChatColor.GOLD + roleName);
+
         checkWin();
     }
 
@@ -179,6 +182,7 @@ public class DeathListener implements Listener {
 
         if (loupsRestants == 0 && villageoisRestants > 0) finishGame("Le Village");
         else if (villageoisRestants == 0 && loupsRestants > 0) finishGame("Les Loups-Garous");
+        else finishGame("Égalité");
     }
 
     private void finishGame(String winner) {
