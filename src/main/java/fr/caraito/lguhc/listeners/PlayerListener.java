@@ -2,17 +2,25 @@ package fr.caraito.lguhc.listeners;
 
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.enums.GState;
+import fr.caraito.lguhc.roles.LGRole;
+import fr.caraito.lguhc.roles.RoleSalvateur;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.ChatColor;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+
 import java.util.Random;
 
 public class PlayerListener implements Listener {
@@ -119,4 +127,21 @@ public class PlayerListener implements Listener {
             block.getWorld().dropItemNaturally(block.getLocation(), drop);
         }
     }
+
+    @EventHandler
+    public void onSalvateurPower(PlayerInteractEvent event) {
+        Player p = event.getPlayer();
+        ItemStack it = p.getItemInHand();
+        if ((event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) &&
+                it != null && it.getType() == Material.IRON_DOOR && it.hasItemMeta() && it.getItemMeta().getDisplayName().contains("Bouclier")) {
+
+            LGRole role = main.getRoleManager().getRole(p.getUniqueId());
+            if (role instanceof RoleSalvateur) {
+                p.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 1));
+                p.sendMessage("§a§l[Salvateur] §fVotre bouclier vous protège ! (Résistance II)");
+                p.setItemInHand(null);
+            }
+        }
+    }
+
 }

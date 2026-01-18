@@ -1,46 +1,34 @@
 package fr.caraito.lguhc.managers;
 
+import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import java.util.*;
 
 public class RoleManager {
-
     private final Map<UUID, LGRole> playerRoles = new HashMap<>();
 
     public void distributeRoles() {
         List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
-        Collections.shuffle(players); // Mélange les joueurs
+        Collections.shuffle(players);
 
-        // Création de la liste des rôles selon le nombre de joueurs
-        List<LGRole> availableRoles = new ArrayList<>();
+        if (players.size() >= 2) {
+            assign(players.remove(0), new RoleSalvateur(Main.getInstance()));
+            assign(players.remove(0), new RoleLGPerfide(Main.getInstance()));
 
-        // Exemple de répartition : 1/4 de Loups, le reste en Villageois
-        int lgCount = players.size() / 4;
-        if (lgCount == 0) lgCount = 1;
-
-        for (int i = 0; i < lgCount; i++) availableRoles.add(new RoleLG());
-        while (availableRoles.size() < players.size()) {
-            availableRoles.add(new RoleVillageois()); // À créer (classe simple)
+            for (Player p : players) {
+                assign(p, new Random().nextBoolean() ? new RoleVillageois() : new RoleLG());
+            }
         }
-
-        Collections.shuffle(availableRoles); // Mélange les rôles
-
-        for (int i = 0; i < players.size(); i++) {
-            Player p = players.get(i);
-            LGRole role = availableRoles.get(i);
-
-            playerRoles.put(p.getUniqueId(), role);
-            role.onDistribute(p);
-        }
+        Bukkit.broadcastMessage("§5§l[LG UHC] §fLes rôles ont été distribués !");
     }
 
-    public LGRole getRole(UUID uuid) {
-        return playerRoles.get(uuid);
+    private void assign(Player p, LGRole r) {
+        playerRoles.put(p.getUniqueId(), r);
+        r.onDistribute(p);
     }
 
-    public void clearRoles() {
-        playerRoles.clear();
-    }
+    public LGRole getRole(UUID id) { return playerRoles.get(id); }
+    public void clearRoles() { playerRoles.clear(); }
 }

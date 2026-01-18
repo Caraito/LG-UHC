@@ -1,5 +1,6 @@
 package fr.caraito.lguhc.roles;
 
+import fr.caraito.lguhc.Main;
 import org.bukkit.entity.Player;
 
 public abstract class LGRole {
@@ -12,6 +13,9 @@ public abstract class LGRole {
         this.name = name;
         this.camp = camp;
         this.description = description;
+    }
+
+    public LGRole(Main main) {
     }
 
     // Cette méthode sera exécutée quand le joueur reçoit son rôle
