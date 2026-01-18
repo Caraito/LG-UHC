@@ -67,7 +67,7 @@ public class Main extends JavaPlugin {
 
     public void setState(GState state) {
         this.gameState = state;
-        Bukkit.broadcastMessage("§8[§6LG UHC§8] §7État : §e" + state.name());
+        Bukkit.broadcast("§8[§6LG UHC§8] §7État : §e" + state.name(), "lguhc.state");
     }
 
     public boolean isState(GState state) { return this.gameState == state; }
