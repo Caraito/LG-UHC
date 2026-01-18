@@ -16,3 +16,6 @@ commands:
   lgstop:
     description: Arrête la partie de Loup-Garou UHC en cours.
     permission: lguhc.admin
+  lgconfig:
+    description: Gérer la configuration du plugin LGUHC
+    permission: lguhc.admin

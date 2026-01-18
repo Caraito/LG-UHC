@@ -1,9 +1,9 @@
 package fr.caraito.lguhc.listeners;
 
 import fr.caraito.lguhc.Main;
+import fr.caraito.lguhc.commands.CommandConfig;
 import fr.caraito.lguhc.enums.GState;
-import fr.caraito.lguhc.roles.LGRole;
-import fr.caraito.lguhc.roles.RoleSalvateur;
+import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -21,7 +21,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -66,7 +65,6 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         org.bukkit.block.Block block = event.getBlock();
 
-        // 1. LIMITE DIAMANTS (15)
         if (block.getType() == Material.DIAMOND_ORE) {
             int count = diamondsMined.getOrDefault(player.getUniqueId(), 0);
             if (count >= 15) {
@@ -77,7 +75,6 @@ public class PlayerListener implements Listener {
             diamondsMined.put(player.getUniqueId(), count + 1);
         }
 
-        // 2. TIMBER
         if (block.getType() == Material.LOG || block.getType() == Material.LOG_2) {
             for (int i = 0; i <= 20; i++) {
                 org.bukkit.block.Block b = block.getRelative(0, i, 0);
@@ -89,7 +86,6 @@ public class PlayerListener implements Listener {
             }
         }
 
-        // 3. CUTCLEAN
         if (block.getType() == Material.IRON_ORE) {
             block.setType(Material.AIR);
             block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 2));
@@ -109,56 +105,21 @@ public class PlayerListener implements Listener {
         if (main.isState(GState.LOBBY)) event.setCancelled(true);
     }
 
-    // --- NOUVEAU POUVOIR SALVATEUR (GUI) ---
-
-    @EventHandler
-    public void onSalvateurInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
-
-        if (item == null || item.getType() == Material.AIR) return;
-        if (!item.hasItemMeta() || !item.getItemMeta().getDisplayName().contains("Bouclier de Fortune")) return;
-
-        event.setCancelled(true);
-
-        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            LGRole role = main.getRoleManager().getRole(player.getUniqueId());
-            if (!(role instanceof RoleSalvateur)) return;
-
-            RoleSalvateur salvateur = (RoleSalvateur) role;
-
-            // Vérification des 5 premières minutes de l'épisode (300 sec)
-            int secondsInEpisode = main.getGameTask().getSeconds() % 1200;
-            if (secondsInEpisode > 300) {
-                player.sendMessage("§cErreur : Vous ne pouvez utiliser votre pouvoir que durant les 5 premières minutes de l'épisode.");
-                return;
-            }
-
-            if (salvateur.isUsedThisEpisode()) {
-                player.sendMessage("§cErreur : Vous avez déjà utilisé votre pouvoir pour cet épisode.");
-                return;
-            }
-
-            openSalvateurGUI(player);
-        }
-    }
-
-    private void openSalvateurGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, "§8Protection du Salvateur");
-        for (Player target : Bukkit.getOnlinePlayers()) {
-            ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
-            SkullMeta meta = (SkullMeta) head.getItemMeta();
-            meta.setOwner(target.getName());
-            meta.setDisplayName("§e" + target.getName());
-            head.setItemMeta(meta);
-            gui.addItem(head);
-        }
-        player.openInventory(gui);
-    }
-
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getInventory() == null || !event.getView().getTitle().equals("§8Protection du Salvateur")) return;
+        String title = event.getView().getTitle();
+        if (title.equals("§8Configuration LG UHC")) {
+            event.setCancelled(true);
+            boolean current = main.getConfig().getBoolean("meetup");
+            main.getConfig().set("meetup", !current);
+            main.saveConfig();
+
+            // On réouvre le menu pour actualiser le visuel
+            new CommandConfig(main).openConfigGUI((Player) event.getWhoClicked());
+            return;
+        }
+
+        if (!title.equals("§8Protection du Salvateur")) return;
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -177,11 +138,10 @@ public class PlayerListener implements Listener {
         RoleSalvateur salvateur = (RoleSalvateur) role;
 
         if (target.getUniqueId().equals(salvateur.getLastProtected())) {
-            player.sendMessage("§cErreur : Vous ne pouvez pas protéger la même personne deux fois d'affilée.");
+            player.sendMessage("§cErreur : Pas 2x d'affilée sur la même personne.");
             return;
         }
 
-        // Application
         target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 1));
         target.sendMessage("§a§l[Salvateur] §fLe Salvateur vous a protégé ! §bRésistance II §fpendant 30s.");
         player.sendMessage("§a§l[Salvateur] §fVous avez protégé §e" + target.getName() + "§f.");
@@ -189,5 +149,45 @@ public class PlayerListener implements Listener {
         salvateur.setLastProtected(target.getUniqueId());
         salvateur.setUsedThisEpisode(true);
         player.closeInventory();
+    }
+
+    @EventHandler
+    public void onSalvateurInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return;
+        if (!item.getItemMeta().getDisplayName().contains("Bouclier de Fortune")) return;
+
+        event.setCancelled(true);
+        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            LGRole role = main.getRoleManager().getRole(player.getUniqueId());
+            if (!(role instanceof RoleSalvateur)) return;
+
+            RoleSalvateur salvateur = (RoleSalvateur) role;
+            int secondsInEpisode = main.getGameTask().getSeconds() % 1200;
+
+            if (secondsInEpisode > 300) {
+                player.sendMessage("§cErreur : Seulement durant les 5 premières minutes de l'épisode.");
+                return;
+            }
+            if (salvateur.isUsedThisEpisode()) {
+                player.sendMessage("§cErreur : Déjà utilisé pour cet épisode.");
+                return;
+            }
+            openSalvateurGUI(player);
+        }
+    }
+
+    private void openSalvateurGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, "§8Protection du Salvateur");
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            meta.setOwner(target.getName());
+            meta.setDisplayName("§e" + target.getName());
+            head.setItemMeta(meta);
+            gui.addItem(head);
+        }
+        player.openInventory(gui);
     }
 }
