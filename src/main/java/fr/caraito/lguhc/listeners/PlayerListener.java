@@ -23,7 +23,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -44,13 +43,10 @@ public class PlayerListener implements Listener {
         event.setJoinMessage(ChatColor.GRAY + "[" + ChatColor.GREEN + "+" + ChatColor.GRAY + "] " + ChatColor.YELLOW + event.getPlayer().getName());
 
         if (main.isState(GState.GAME)) {
-
             Player player = event.getPlayer();
             player.setGameMode(org.bukkit.GameMode.SPECTATOR);
             player.sendMessage("§cLa partie est déjà en cours. Vous êtes en mode spectateur.");
-
         }
-
     }
 
     @EventHandler
@@ -77,7 +73,6 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         org.bukkit.block.Block block = event.getBlock();
 
-        // 1. LIMITE DIAMANTS (15)
         if (block.getType() == Material.DIAMOND_ORE) {
             int count = diamondsMined.getOrDefault(player.getUniqueId(), 0);
             if (count >= 15) {
@@ -88,7 +83,6 @@ public class PlayerListener implements Listener {
             diamondsMined.put(player.getUniqueId(), count + 1);
         }
 
-        // 2. TIMBER
         if (block.getType() == Material.LOG || block.getType() == Material.LOG_2) {
             for (int i = 0; i <= 20; i++) {
                 org.bukkit.block.Block b = block.getRelative(0, i, 0);
@@ -100,7 +94,6 @@ public class PlayerListener implements Listener {
             }
         }
 
-        // 3. CUTCLEAN
         if (block.getType() == Material.IRON_ORE) {
             block.setType(Material.AIR);
             block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 2));
@@ -125,33 +118,34 @@ public class PlayerListener implements Listener {
         if (main.isState(GState.GAME)) event.setCancelled(true);
     }
 
-    // --- NOUVEAU POUVOIR SALVATEUR (GUI) ---
-
     @EventHandler
     public void onSalvateurInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
 
-        if (item == null || item.getType() == Material.AIR) return;
-        if (!item.hasItemMeta() || !item.getItemMeta().getDisplayName().contains("Bouclier de Fortune")) return;
+        // Sécurité : Item nul ou pas de meta
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return;
+
+        // Sécurité : L'item doit avoir un nom pour être comparé
+        if (!item.getItemMeta().hasDisplayName() || !item.getItemMeta().getDisplayName().contains("Bouclier de Fortune")) return;
 
         event.setCancelled(true);
 
         if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            // Sécurité : Vérifier si la partie a bien commencé (Task non nulle)
+            if (main.getGameTask() == null) return;
+
             LGRole role = main.getRoleManager().getRole(player.getUniqueId());
             if (!(role instanceof RoleSalvateur)) return;
 
             RoleSalvateur salvateur = (RoleSalvateur) role;
 
-            // --- CORRECTION LOGIQUE MEETUP ---
             boolean isMeetup = main.getConfig().getBoolean("meetup", false);
             int roleTime = isMeetup ? 300 : 1200;
             int totalSeconds = main.getGameTask().getSeconds();
 
-            // On vérifie si on est bien après la distribution des rôles
             if (totalSeconds < roleTime) return;
 
-            // On calcule le temps écoulé dans l'épisode actuel par rapport au point de départ (roleTime)
             int secondsInEpisode = (totalSeconds - roleTime) % 1200;
 
             if (secondsInEpisode > 300) {
@@ -183,7 +177,6 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-
         String title = event.getView().getTitle();
 
         if (title.equals("§8Configuration LG UHC")) {
@@ -195,14 +188,15 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getInventory() == null || !event.getView().getTitle().equals("§8Protection du Salvateur")) return;
+        if (event.getInventory() == null || !title.equals("§8Protection du Salvateur")) return;
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
         ItemStack clicked = event.getCurrentItem();
 
-        if (clicked == null || clicked.getType() != Material.SKULL_ITEM) return;
+        // Sécurité : On vérifie si l'item cliqué a bien un nom
+        if (clicked == null || clicked.getType() != Material.SKULL_ITEM || !clicked.hasItemMeta() || !clicked.getItemMeta().hasDisplayName()) return;
 
         String targetName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
         Player target = Bukkit.getPlayer(targetName);
@@ -218,7 +212,6 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        // Application
         target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 20*20*60, 0));
         target.sendMessage("§a§l[Salvateur] §fLe Salvateur vous a protégé ! §bRésistance I §fpendant 20 minutes.");
         player.sendMessage("§a§l[Salvateur] §fVous avez protégé §e" + target.getName() + "§f.");
