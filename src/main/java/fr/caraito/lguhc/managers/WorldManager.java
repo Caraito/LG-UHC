@@ -3,6 +3,7 @@ package fr.caraito.lguhc.managers;
 import fr.caraito.lguhc.Main;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import java.io.File;
 import java.util.ArrayList;
@@ -54,50 +55,49 @@ public class WorldManager {
             Location teleLoc;
             int attempts = 0;
 
-            // Boucle de recherche de position sûre
             do {
                 double x = (Math.random() * radius * 2) - radius;
                 double z = (Math.random() * radius * 2) - radius;
-
-                // On charge le chunk pour être sûr que getHighestBlockYAt fonctionne
                 currentGameWorld.getChunkAt((int)x >> 4, (int)z >> 4).load();
-
                 double y = currentGameWorld.getHighestBlockYAt((int)x, (int)z);
                 teleLoc = new Location(currentGameWorld, x + 0.5, y + 1, z + 0.5);
-
                 attempts++;
-                // Sécurité pour éviter une boucle infinie si la map est 100% océan
                 if (attempts > 50) break;
-
             } while (!isSafe(teleLoc));
 
             player.teleport(teleLoc);
             player.setHealth(20.0);
+            player.setFoodLevel(20);
             player.getInventory().clear();
             player.setGameMode(GameMode.SURVIVAL);
+
+            // --- AJOUT : GIVE NOURRITURE ---
+            player.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
+
             Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté dans le monde de jeu !");
+
         }
         return true;
     }
 
-    /**
-     * Décharge et supprime UNIQUEMENT le monde actuel
-     */
+    private boolean isSafe(Location location) {
+        Material blockType = location.getBlock().getType();
+        Material underType = location.clone().add(0, -1, 0).getBlock().getType();
+        if (blockType.name().contains("WATER") || blockType.name().contains("LAVA") ||
+                underType.name().contains("WATER") || underType.name().contains("LAVA")) return false;
+        return blockType == Material.AIR;
+    }
+
     public void unloadCurrentWorld() {
         if (this.currentGameWorld != null) {
             String name = currentGameWorld.getName();
-
-            // On s'assure que personne n'est dedans (sécurité supplémentaire)
             for (Player p : currentGameWorld.getPlayers()) {
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
             }
-
             Bukkit.unloadWorld(this.currentGameWorld, false);
             File worldFolder = new File(Bukkit.getWorldContainer(), name);
             deleteFolderRecursive(worldFolder);
-
             this.currentGameWorld = null;
-            Bukkit.getLogger().info("[LGUHC] Monde de jeu supprimé.");
         }
     }
 
@@ -124,28 +124,6 @@ public class WorldManager {
             }
         }
         path.delete();
-    }
-
-    private boolean isSafe(Location location) {
-        // On vérifie le bloc aux pieds du joueur
-        Material blockType = location.getBlock().getType();
-        // On vérifie aussi le bloc juste en dessous
-        Material underType = location.clone().add(0, -1, 0).getBlock().getType();
-
-        // Si c'est de l'eau ou de la lave (statique ou coulante), ce n'est pas sûr
-        if (blockType == Material.WATER || blockType == Material.STATIONARY_WATER ||
-                blockType == Material.LAVA || blockType == Material.STATIONARY_LAVA) {
-            return false;
-        }
-
-        // Pareil pour le bloc du dessous (on ne veut pas spawn sur un bloc de lave)
-        if (underType == Material.WATER || underType == Material.STATIONARY_WATER ||
-                underType == Material.LAVA || underType == Material.STATIONARY_LAVA) {
-            return false;
-        }
-
-        // Le bloc doit être de l'air pour que le joueur ne soit pas étouffé
-        return blockType == Material.AIR;
     }
 
     public List<String> getPreparedWorlds() { return preparedWorlds; }

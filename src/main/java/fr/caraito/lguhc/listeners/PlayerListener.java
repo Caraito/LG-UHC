@@ -3,12 +3,18 @@ package fr.caraito.lguhc.listeners;
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.enums.GState;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.ChatColor;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.Random;
 
 public class PlayerListener implements Listener {
 
@@ -20,52 +26,59 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        event.setJoinMessage(ChatColor.GRAY + "[" + ChatColor.GREEN + "+" + ChatColor.GRAY + "] " + ChatColor.YELLOW + event.getPlayer().getName());
-
-        // Téléportation au spawn du lobby si besoin
-        if (main.isState(GState.LOBBY)) {
-            event.getPlayer().sendMessage(ChatColor.GOLD + "Bienvenue en LG UHC ! En attente du lancement...");
-        }
+        Player player = event.getPlayer();
+        event.setJoinMessage("§8[§a+§8] §7" + player.getName());
     }
 
     @EventHandler
-    public void onBreak(BlockBreakEvent event) {
-        if (main.isState(GState.LOBBY)) {
-            event.setCancelled(true);
+    public void onQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        event.setQuitMessage("§8[§c-§8] §7" + player.getName());
+    }
+
+    // --- AUTO-ENCHANT DES OUTILS ---
+    @EventHandler
+    public void onCraft(CraftItemEvent event) {
+        ItemStack item = event.getCurrentItem();
+        if (item == null || item.getType() == Material.AIR) return;
+
+        Material type = item.getType();
+        String name = type.name();
+
+        // On enchante pioches, haches, pelles, épées
+        if (name.contains("PICKAXE") || name.contains("AXE") || name.contains("SPADE")) {
+            item.addUnsafeEnchantment(Enchantment.DIG_SPEED, 3);
+            item.addUnsafeEnchantment(Enchantment.DURABILITY, 3);
+
         }
     }
 
+    // --- TIMBER (CASSAGE D'ARBRE) ---
     @EventHandler
-    public void onDamage(EntityDamageEvent event) {
-        if (main.isState(GState.LOBBY)) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onOreBreak(org.bukkit.event.block.BlockBreakEvent event) {
+    public void onBlockBreak(BlockBreakEvent event) {
         if (!main.isState(GState.GAME)) return;
 
-        org.bukkit.block.Block block = event.getBlock();
-        org.bukkit.inventory.ItemStack drop = null;
-
-        // Système de CutClean (Cuit direct + bonus)
-        if (block.getType() == Material.IRON_ORE) {
-            event.setExpToDrop(3);
-            block.setType(Material.AIR);
-            drop = new org.bukkit.inventory.ItemStack(Material.IRON_INGOT, 2);
-        } else if (block.getType() == Material.GOLD_ORE) {
-            event.setExpToDrop(5);
-            block.setType(Material.AIR);
-            drop = new org.bukkit.inventory.ItemStack(Material.GOLD_INGOT, 2);
-        } else if (block.getType() == Material.DIAMOND_ORE) {
-            event.setExpToDrop(10);
-            // On peut laisser le drop naturel ou le booster
-        }
-
-        if (drop != null) {
-            block.getWorld().dropItemNaturally(block.getLocation(), drop);
+        Block block = event.getBlock();
+        // LOG = Chêne, Sapin, Bouleau, Jungle | LOG_2 = Acacia, Chêne noir
+        if (block.getType() == Material.LOG || block.getType() == Material.LOG_2) {
+            breakTree(block);
         }
     }
 
+    private void breakTree(Block block) {
+        // On casse les blocs vers le haut pour simuler la chute de l'arbre
+        for (int y = 0; y <= 30; y++) {
+            Block b = block.getRelative(0, y, 0);
+            if (b.getType() == Material.LOG || b.getType() == Material.LOG_2) {
+                b.breakNaturally();
+
+                // Chance de faire tomber une pomme à chaque bûche cassée (plus simple pour le serveur)
+                if (new Random().nextInt(100) < 5) { // 5% de chance par bûche
+                    b.getWorld().dropItemNaturally(b.getLocation(), new ItemStack(Material.APPLE));
+                }
+            } else {
+                break; // Plus de bois au dessus, on arrête
+            }
+        }
+    }
 }
