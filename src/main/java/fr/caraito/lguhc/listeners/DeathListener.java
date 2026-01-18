@@ -181,6 +181,9 @@ public class DeathListener implements Listener {
         Bukkit.broadcastMessage("§6   VICTOIRE : §e" + winner);
         Bukkit.broadcastMessage("§d===============================");
 
+        int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds")).size();
+        Bukkit.broadcast("§7Mondes préparés restants : §e" + preparedWorlds, "lguhc.state");
+
         Bukkit.getScheduler().runTaskLater(main, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
