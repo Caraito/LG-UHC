@@ -21,7 +21,7 @@ public class CommandStart implements CommandExecutor {
         if (!sender.isOp()) return true;
 
         if (main.isState(GState.LOBBY)) {
-            boolean success = main.getWorldManager().prepareAndTeleport(800);
+            boolean success = main.getWorldManager().prepareAndTeleport(1800);
 
             if (success) {
                 main.setState(GState.GAME);

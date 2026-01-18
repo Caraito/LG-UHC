@@ -7,6 +7,7 @@ import fr.caraito.lguhc.roles.RoleCamp;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,6 +24,7 @@ public class DeathListener implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
+        Location DeathLocation = victim.getLocation();
 
         // 1. Annonce du rôle du joueur mort
         LGRole role = main.getRoleManager().getRole(victim.getUniqueId());
@@ -32,6 +34,7 @@ public class DeathListener implements Listener {
         // 2. Passage en spectateur (délai de 10 ticks pour éviter les bugs de respawn)
         Bukkit.getScheduler().runTaskLater(main, () -> {
             victim.setGameMode(GameMode.SPECTATOR);
+            victim.teleport(DeathLocation);
         }, 10L);
 
         // 3. On vérifie si une équipe a gagné

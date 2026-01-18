@@ -60,7 +60,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (worldManager != null) worldManager.deleteAllWorldFolders();
+        Bukkit.getLogger().info("LG UHC désactivé.");
     }
 
     public void setState(GState state) {
