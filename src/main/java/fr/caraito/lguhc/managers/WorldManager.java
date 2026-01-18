@@ -8,10 +8,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class WorldManager {
 
@@ -19,11 +18,11 @@ public class WorldManager {
     private World currentGameWorld;
 
     public WorldManager() {
-        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds"));
+        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds-list"));
     }
 
     private void saveToConfig() {
-        Main.getInstance().getConfig().set("prepared-worlds", preparedWorlds);
+        Main.getInstance().getConfig().set("prepared-worlds-list", preparedWorlds);
         Main.getInstance().saveConfig();
     }
 
@@ -33,7 +32,7 @@ public class WorldManager {
             @Override
             public void run() {
                 if (count >= amount) {
-                    Bukkit.broadcastMessage("§a[LG UHC] Tous les mondes sont prêts ! (Stock total : §f" + preparedWorlds.size() + "§a)");
+                    Bukkit.broadcastMessage("§a[LG UHC] Génération terminée ! Mondes dispo : §f" + preparedWorlds.size());
                     this.cancel();
                     return;
                 }
@@ -41,9 +40,11 @@ public class WorldManager {
                 WorldCreator creator = new WorldCreator(name);
                 creator.seed(new Random().nextLong());
                 World world = creator.createWorld();
+
                 setupUHCWorld(world);
                 preparedWorlds.add(name);
                 saveToConfig();
+
                 count++;
             }
         }.runTaskTimer(Main.getInstance(), 0L, 100L);
@@ -58,6 +59,113 @@ public class WorldManager {
         world.getWorldBorder().setSize(4000);
     }
 
+    public void prepareSafeLocations(int spawnsPerMap, int respawnsPerMap, int mapAmount) {
+        if (preparedWorlds.size() < mapAmount) {
+            Bukkit.broadcastMessage("§c[Erreur] Pas assez de mondes générés (" + preparedWorlds.size() + "/" + mapAmount + ")");
+            return;
+        }
+
+        new BukkitRunnable() {
+            int currentMapIdx = 0;
+
+            @Override
+            public void run() {
+                if (currentMapIdx >= mapAmount) {
+                    Bukkit.broadcastMessage("§a[LG UHC] Coordonnées préparées pour " + mapAmount + " mondes !");
+                    this.cancel();
+                    return;
+                }
+
+                String worldName = preparedWorlds.get(currentMapIdx);
+                World world = Bukkit.getWorld(worldName);
+                if (world == null) world = Bukkit.createWorld(new WorldCreator(worldName));
+
+                List<String> spawns = new ArrayList<>();
+                for (int i = 0; i < spawnsPerMap; i++) {
+                    Location loc = findSingleSafeLoc(world, 1800);
+                    spawns.add(loc.getX() + ";" + loc.getY() + ";" + loc.getZ());
+                }
+                Main.getInstance().getConfig().set("worlds-data." + worldName + ".spawns", spawns);
+
+                List<String> respawns = new ArrayList<>();
+                for (int i = 0; i < respawnsPerMap; i++) {
+                    Location loc = findSingleSafeLoc(world, 1800);
+                    respawns.add(loc.getX() + ";" + loc.getY() + ";" + loc.getZ());
+                }
+                Main.getInstance().getConfig().set("worlds-data." + worldName + ".respawns", respawns);
+
+                Main.getInstance().saveConfig();
+                currentMapIdx++;
+            }
+        }.runTaskTimer(Main.getInstance(), 0L, 40L);
+    }
+
+    /**
+     * CORRECTION : Charge les chunks AUTOUR des positions sauvegardées dans la config.
+     */
+    public void preLoadChunks(int mapIndex, int radiusBlocks) {
+        if (mapIndex >= preparedWorlds.size()) return;
+
+        String worldName = preparedWorlds.get(mapIndex);
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) world = Bukkit.createWorld(new WorldCreator(worldName));
+
+        // On récupère toutes les positions sauvegardées
+        List<String> spawns = Main.getInstance().getConfig().getStringList("worlds-data." + worldName + ".spawns");
+        List<String> respawns = Main.getInstance().getConfig().getStringList("worlds-data." + worldName + ".respawns");
+
+        List<String> allPositions = new ArrayList<>(spawns);
+        allPositions.addAll(respawns);
+
+        if (allPositions.isEmpty()) {
+            Bukkit.broadcastMessage("§c[LG UHC] Aucune position n'est enregistrée pour le monde : " + worldName);
+            return;
+        }
+
+        // Utilisation d'un Set pour éviter de charger deux fois le même chunk si les positions sont proches
+        Set<Long> chunksToLoad = new HashSet<>();
+        int radiusChunks = radiusBlocks / 16;
+
+        for (String posStr : allPositions) {
+            String[] parts = posStr.split(";");
+            int centerX = (int) Double.parseDouble(parts[0]) >> 4;
+            int centerZ = (int) Double.parseDouble(parts[2]) >> 4;
+
+            for (int x = centerX - radiusChunks; x <= centerX + radiusChunks; x++) {
+                for (int z = centerZ - radiusChunks; z <= centerZ + radiusChunks; z++) {
+                    // On stocke les coordonnées du chunk sous forme de Long (clé unique)
+                    chunksToLoad.add((long) x << 32 | z & 0xFFFFFFFFL);
+                }
+            }
+        }
+
+        List<Long> chunkQueue = new ArrayList<>(chunksToLoad);
+        World finalWorld = world;
+        int totalChunks = chunkQueue.size();
+
+        new BukkitRunnable() {
+            int index = 0;
+
+            @Override
+            public void run() {
+                for (int i = 0; i < 15; i++) {
+                    if (index >= chunkQueue.size()) {
+                        Bukkit.broadcastMessage("§a[LG UHC] Pré-chargement de " + totalChunks + " chunks terminé pour " + worldName);
+                        this.cancel();
+                        return;
+                    }
+
+                    long key = chunkQueue.get(index);
+                    int x = (int) (key >> 32);
+                    int z = (int) key;
+
+                    finalWorld.getChunkAt(x, z).load(true);
+                    index++;
+                }
+            }
+        }.runTaskTimer(Main.getInstance(), 0L, 1L);
+    }
+
     public boolean prepareAndTeleport(int radius) {
         if (preparedWorlds.isEmpty()) return false;
 
@@ -69,36 +177,23 @@ public class WorldManager {
             this.currentGameWorld = Bukkit.createWorld(new WorldCreator(worldName));
         }
 
-        Bukkit.getLogger().info("[LGUHC-Debug] Tentative de spawn dans : " + worldName);
+        List<String> savedSpawns = Main.getInstance().getConfig().getStringList("worlds-data." + worldName + ".spawns");
 
+        int i = 0;
         for (Player player : Bukkit.getOnlinePlayers()) {
-            Location teleLoc = null;
-            int attempts = 0;
+            Location teleLoc;
 
-            do {
-                attempts++;
-                double x = (Math.random() * radius * 2) - radius;
-                double z = (Math.random() * radius * 2) - radius;
+            if (i < savedSpawns.size()) {
+                String[] p = savedSpawns.get(i).split(";");
+                teleLoc = new Location(currentGameWorld, Double.parseDouble(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]));
+                savedSpawns.remove(i);
+                Main.getInstance().getConfig().set("worlds-data." + worldName + ".spawns", savedSpawns);
+                Main.getInstance().saveConfig();
+            } else {
+                teleLoc = findSingleSafeLoc(currentGameWorld, radius);
+            }
 
-                // Forcer le chargement du chunk
-                currentGameWorld.getChunkAt((int)x >> 4, (int)z >> 4).load();
-
-                // getHighestBlockYAt renvoie le Y du premier bloc d'AIR
-                double y = currentGameWorld.getHighestBlockYAt((int)x, (int)z);
-
-                // CORRECTION : On se TP exactement à Y.0 pour être au niveau du sol
-                teleLoc = new Location(currentGameWorld, x + 0.5, y, z + 0.5);
-
-                if (attempts > 250) {
-                    Bukkit.getLogger().severe("[LGUHC-Debug] Spawn forcé pour " + player.getName());
-                    break;
-                }
-
-            } while (!isSafe(teleLoc, player.getName(), attempts));
-
-            // Anti-glitch : On s'assure que le chunk est bien envoyé au joueur
             teleLoc.getChunk().load();
-
             player.setFallDistance(0.0f);
             player.teleport(teleLoc);
 
@@ -107,43 +202,45 @@ public class WorldManager {
             player.getInventory().clear();
             player.setGameMode(GameMode.SURVIVAL);
 
-            // Protection 5s pour laisser charger le décor (Raspberry Pi)
             player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 255));
             player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 1));
-
             player.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
 
-            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " a été téléporté !");
+            Bukkit.broadcastMessage("§a[LG UHC] " + player.getName() + " est prêt !");
+            i++;
         }
         return true;
     }
 
-    private boolean isSafe(Location loc, String playerName, int attempt) {
+    private Location findSingleSafeLoc(World world, int radius) {
+        Location loc;
+        int attempts = 0;
+        do {
+            attempts++;
+            double x = (Math.random() * radius * 2) - radius;
+            double z = (Math.random() * radius * 2) - radius;
+            world.getChunkAt((int) x >> 4, (int) z >> 4).load();
+            double y = world.getHighestBlockYAt((int) x, (int) z);
+            loc = new Location(world, x + 0.5, y + 1.2, z + 0.5);
+            if (attempts > 500) break;
+        } while (!isSafe(loc));
+        return loc;
+    }
+
+    private boolean isSafe(Location loc) {
         Material feet = loc.getBlock().getType();
         Material head = loc.clone().add(0, 1, 0).getBlock().getType();
         Material floor = loc.clone().add(0, -1, 0).getBlock().getType();
         Biome biome = loc.getBlock().getBiome();
 
-        // --- FILTRE DES BIOMES "DIFFICILES" ---
-        // On refuse l'eau, mais aussi le désert et les biomes sans bois/nourriture
         if (biome.name().contains("OCEAN") || biome.name().contains("RIVER")) return false;
+        if (biome == Biome.DESERT || biome == Biome.DESERT_HILLS) return false;
+        if (biome.name().contains("MESA") || biome.name().contains("ICE_PLAINS")) return false;
 
-        if (biome == Biome.DESERT || biome == Biome.DESERT_HILLS) {
-            // Trop difficile : pas d'arbres, pas de nourriture
-            return false;
-        }
-
-        if (biome.name().contains("MESA") || biome.name().contains("ICE_PLAINS")) {
-            // Mesa = pas de bois facile | Ice = pas de nourriture
-            return false;
-        }
-
-        // --- VÉRIFICATIONS PHYSIQUES ---
         if (isLiquid(feet) || isLiquid(floor) || isLiquid(head)) return false;
         if (feet != Material.AIR || head != Material.AIR) return false;
 
-        // On accepte si le sol est de l'herbe, de la terre ou de la pierre (Plaines, Forêt, Jungle, Taiga)
-        return floor != Material.AIR && floor.isSolid();
+        return floor.isSolid() && floor != Material.CACTUS;
     }
 
     private boolean isLiquid(Material m) {

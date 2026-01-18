@@ -78,24 +78,42 @@ public class PlayerDeathBeforeRoleListener implements Listener {
 
             // Monde UHC
             World world = savedWorld.remove(uuid);
+            String worldName = world.getName();
 
-            // Position aléatoire
-            int radius = 1800;
-            Random random = new Random();
+            // --- RÉCUPÉRATION DES COORDONNÉES PRÉ-GÉNÉRÉES ---
+            List<String> respawns = main.getConfig().getStringList("worlds-data." + worldName + ".respawns");
+            Location finalLoc = null;
 
-            int x = random.nextInt(radius * 2) - radius;
-            int z = random.nextInt(radius * 2) - radius;
+            if (respawns != null && !respawns.isEmpty()) {
+                // On prend la première position
+                String posStr = respawns.remove(0); // remove(0) retire l'élément de la liste locale
+                String[] parts = posStr.split(";");
 
-            // Charger le chunk
-            world.getChunkAt(x >> 4, z >> 4).load();
+                finalLoc = new Location(world,
+                        Double.parseDouble(parts[0]),
+                        Double.parseDouble(parts[1]),
+                        Double.parseDouble(parts[2]));
 
-            int y = world.getHighestBlockYAt(x, z);
+                // On met à jour la config pour supprimer la coordonnée utilisée
+                main.getConfig().set("worlds-data." + worldName + ".respawns", respawns);
+                main.saveConfig();
 
-            // Toujours y + 1
-            Location baseLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
+                player.sendMessage("§a§l[LG UHC] §7Utilisation d'un point de respawn pré-préparé.");
+            } else {
+                // FALLBACK : Si la config est vide, on utilise ton ancienne méthode aléatoire
+                player.sendMessage("§6§l[LG UHC] §eAttention : Aucun point préparé trouvé, recherche aléatoire...");
+                int radius = 1800;
+                Random random = new Random();
+                int x = random.nextInt(radius * 2) - radius;
+                int z = random.nextInt(radius * 2) - radius;
+                world.getChunkAt(x >> 4, z >> 4).load();
+                int y = world.getHighestBlockYAt(x, z);
+                Location baseLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
+                finalLoc = findSafeLocationAround(baseLoc);
+            }
 
-            Location safeLoc = findSafeLocationAround(baseLoc);
-            player.teleport(safeLoc);
+            // Téléportation
+            player.teleport(finalLoc);
 
             // Restauration inventaire
             if (savedItems.containsKey(uuid)) {
@@ -105,14 +123,14 @@ public class PlayerDeathBeforeRoleListener implements Listener {
 
             // Protection courte
             player.addPotionEffect(
-                    new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, 5)
+                    new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 255)
             );
 
             player.sendMessage("§a§l[LG UHC] §7Mort avant les rôles — vous avez été ressuscité avec votre stuff.");
         });
     }
 
-    /* ===================== SAFE LOCATION ===================== */
+    /* ===================== SAFE LOCATION (FALLBACK) ===================== */
 
     private Location findSafeLocationAround(Location base) {
         World world = base.getWorld();
@@ -132,8 +150,6 @@ public class PlayerDeathBeforeRoleListener implements Listener {
                 return loc;
             }
         }
-
-        // Fallback
         return base.clone().add(0, 1, 0);
     }
 
