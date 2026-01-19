@@ -18,6 +18,10 @@ public abstract class LGRole {
     public LGRole(Main main) {
     }
 
+    public void setCamp(RoleCamp camp) {
+        this.camp = camp;
+    }
+
     // Cette méthode sera exécutée quand le joueur reçoit son rôle
     public abstract void onDistribute(Player player);
 

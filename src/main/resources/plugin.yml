@@ -19,3 +19,5 @@ commands:
   lgconfig:
     description: Gérer la configuration du plugin LGUHC
     permission: lguhc.admin
+  lgrevive:
+    description: Revivre un joueur mort.

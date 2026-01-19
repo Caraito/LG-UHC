@@ -1,10 +1,6 @@
 package fr.caraito.lguhc;
 
-import fr.caraito.lguhc.commands.CommandConfig;
-import fr.caraito.lguhc.commands.CommandSpawn;
-import fr.caraito.lguhc.commands.CommandStart;
-import fr.caraito.lguhc.commands.CommandStop;
-import fr.caraito.lguhc.commands.CommandWorld;
+import fr.caraito.lguhc.commands.*;
 import fr.caraito.lguhc.enums.GState;
 import fr.caraito.lguhc.listeners.DeathListener;
 import fr.caraito.lguhc.listeners.PlayerDeathBeforeRoleListener;
@@ -24,7 +20,8 @@ public class Main extends JavaPlugin {
     private WorldManager worldManager;
     private RoleManager roleManager;
     private ScoreboardManager sbManager;
-    private GameTask gameTask; // Ajout pour stocker la tâche
+    private GameTask gameTask;
+    private DeathListener deathListener;
 
     private static Main instance;
 
@@ -35,21 +32,28 @@ public class Main extends JavaPlugin {
         saveDefaultConfig();
 
         setState(GState.LOBBY);
+
+        // Initialisation des managers
         this.worldManager = new WorldManager();
         this.roleManager = new RoleManager();
         this.sbManager = new ScoreboardManager();
 
+        // CORRECTION 1 & 2 : On passe 'this' et on stocke l'instance
+        this.deathListener = new DeathListener(this);
 
-
+        // Enregistrement des listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
-        getServer().getPluginManager().registerEvents(new DeathListener(this), this);
+        // CORRECTION 3 : On utilise l'instance déjà créée au dessus
+        getServer().getPluginManager().registerEvents(this.deathListener, this);
         getServer().getPluginManager().registerEvents(new PlayerDeathBeforeRoleListener(this), this);
 
+        // Commandes
         getCommand("lgstart").setExecutor(new CommandStart(this));
         getCommand("lgworld").setExecutor(new CommandWorld(this));
         getCommand("lgspawn").setExecutor(new CommandSpawn());
         getCommand("lgstop").setExecutor(new CommandStop(this));
         getCommand("lgconfig").setExecutor(new CommandConfig(this));
+        getCommand("lgrevive").setExecutor(new CommandRevive(this));
 
         Bukkit.getConsoleSender().sendMessage(ChatColor.GOLD + "Plugin LG UHC par Caraito - Operationnel");
 
@@ -72,12 +76,16 @@ public class Main extends JavaPlugin {
         Bukkit.broadcast("§8[§6LG UHC§8] §7État : §e" + state.name(), "lguhc.state");
     }
 
+    // Getters
     public boolean isState(GState state) { return this.gameState == state; }
     public WorldManager getWorldManager() { return worldManager; }
     public RoleManager getRoleManager() { return roleManager; }
-    public static Main getInstance() { return instance; }
 
-    // Getters et Setters pour la Task
+    // CORRECTION : Le nom de la méthode doit être getDeathListener
+    public DeathListener getDeathListener() { return deathListener; }
+
     public GameTask getGameTask() { return gameTask; }
     public void setGameTask(GameTask gameTask) { this.gameTask = gameTask; }
+
+    public static Main getInstance() { return instance; }
 }

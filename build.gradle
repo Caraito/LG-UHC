@@ -1,44 +1,87 @@
 plugins {
+
     id 'java'
+
 }
+
+
 
 group = 'fr.caraito.lguhc'
+
 version = '1.0-SNAPSHOT'
 
+
+
 // On force la compilation en Java 8 pour la compatibilité 1.8.8
+
 sourceCompatibility = '1.8'
+
 targetCompatibility = '1.8'
 
+
+
 repositories {
+
     mavenCentral()
-    // Dépôt Spigot principal
+
+// Dépôt Spigot principal
+
     maven {
+
         url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+
     }
-    // Dépôt Sonatype (souvent requis pour les dépendances de Spigot)
+
+// Dépôt Sonatype (souvent requis pour les dépendances de Spigot)
+
     maven {
+
         url = 'https://oss.sonatype.org/content/groups/public/'
+
     }
-    // Dépôt spécifique pour BungeeCord-Chat (ce qui te manque ici)
+
+// Dépôt spécifique pour BungeeCord-Chat (ce qui te manque ici)
+
     maven {
+
         url = 'https://oss.sonatype.org/content/repositories/snapshots'
+
     }
+
 }
+
+
 
 dependencies {
-    // On ajoute transitive = false pour éviter qu'il cherche bungeecord-chat
+
+// On ajoute transitive = false pour éviter qu'il cherche bungeecord-chat
+
     compileOnly('org.spigotmc:spigot-api:1.8.8-R0.1-SNAPSHOT') {
+
         transitive = false
+
     }
+
 }
+
+
 
 tasks.withType(JavaCompile) {
+
     options.encoding = 'UTF-8'
+
 }
 
+
+
 // Cette partie permet de générer le JAR final
+
 jar {
+
     from {
+
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+
     }
+
 }
