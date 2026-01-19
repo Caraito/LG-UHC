@@ -194,7 +194,7 @@ public class DeathListener implements Listener {
         Bukkit.broadcastMessage("§6   VICTOIRE : §e" + winner);
         Bukkit.broadcastMessage("§d===============================");
 
-        int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds")).size();
+        int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("worlds-data")).size();
         Bukkit.broadcastMessage("§7Mondes préparés restants : §e" + preparedWorlds);
 
         Bukkit.getScheduler().runTaskLater(main, () -> {
@@ -204,6 +204,9 @@ public class DeathListener implements Listener {
                 p.getInventory().clear();
             }
             main.getRoleManager().clearRoles();
+
+            main.getWorldManager().unloadCurrentWorld();
+
             Bukkit.broadcast("§8[§6LG UHC§8] §7Le jeu est terminé. Retour au lobby.", "lguhc.state");
         }, 200L);
     }

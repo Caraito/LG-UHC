@@ -98,10 +98,10 @@ public class PlayerDeathBeforeRoleListener implements Listener {
                 main.getConfig().set("worlds-data." + worldName + ".respawns", respawns);
                 main.saveConfig();
 
-                player.sendMessage("§a§l[LG UHC] §7Utilisation d'un point de respawn pré-préparé.");
+                Bukkit.getLogger().info("§a§l[LG UHC] §7Utilisation d'un point de respawn pré-préparé.");
             } else {
                 // FALLBACK : Si la config est vide, on utilise ton ancienne méthode aléatoire
-                player.sendMessage("§6§l[LG UHC] §eAttention : Aucun point préparé trouvé, recherche aléatoire...");
+                Bukkit.getLogger().info("§6§l[LG UHC] §eAttention : Aucun point préparé trouvé, recherche aléatoire...");
                 int radius = 1800;
                 Random random = new Random();
                 int x = random.nextInt(radius * 2) - radius;
@@ -111,6 +111,8 @@ public class PlayerDeathBeforeRoleListener implements Listener {
                 Location baseLoc = new Location(world, x + 0.5, y + 1, z + 0.5);
                 finalLoc = findSafeLocationAround(baseLoc);
             }
+
+            finalLoc.getChunk().load();
 
             // Téléportation
             player.teleport(finalLoc);

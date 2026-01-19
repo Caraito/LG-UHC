@@ -44,7 +44,8 @@ public class CommandStop implements CommandExecutor {
             main.getWorldManager().unloadCurrentWorld();
             main.setState(GState.LOBBY);
             Bukkit.broadcastMessage(ChatColor.GREEN + "Partie arrêtée !");
-            int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds")).size();
+
+            int preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("worlds-data")).size();
             Bukkit.broadcastMessage("§7Mondes préparés restants : §e" + preparedWorlds);
         }
         return true;

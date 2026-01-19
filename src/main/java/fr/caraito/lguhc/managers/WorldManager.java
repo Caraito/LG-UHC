@@ -18,7 +18,7 @@ public class WorldManager {
     private World currentGameWorld;
 
     public WorldManager() {
-        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds-list"));
+        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("worlds-data"));
     }
 
     private void saveToConfig() {
@@ -186,11 +186,13 @@ public class WorldManager {
             if (i < savedSpawns.size()) {
                 String[] p = savedSpawns.get(i).split(";");
                 teleLoc = new Location(currentGameWorld, Double.parseDouble(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]));
+                Bukkit.getLogger().info("[LG UHC] Téléportation de " + player.getName() + " vers un spawn pré-enregistré.");
                 savedSpawns.remove(i);
                 Main.getInstance().getConfig().set("worlds-data." + worldName + ".spawns", savedSpawns);
                 Main.getInstance().saveConfig();
             } else {
                 teleLoc = findSingleSafeLoc(currentGameWorld, radius);
+                Bukkit.getLogger().info("[LG UHC] Téléportation de " + player.getName() + " vers un spawn aléatoire.");
             }
 
             teleLoc.getChunk().load();
@@ -251,13 +253,25 @@ public class WorldManager {
     public void unloadCurrentWorld() {
         if (this.currentGameWorld != null) {
             String name = currentGameWorld.getName();
+
+            // 1. On téléporte les joueurs restants au spawn principal
             for (Player p : currentGameWorld.getPlayers()) {
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
             }
+
+            // 2. Supprimer UNIQUEMENT les données de CE monde dans la config
+            Main.getInstance().getConfig().set("worlds-data." + name, null);
+            Main.getInstance().saveConfig();
+
+            // 3. Décharger le monde
             Bukkit.unloadWorld(this.currentGameWorld, false);
+
+            // 4. Supprimer le dossier physique
             File worldFolder = new File(Bukkit.getWorldContainer(), name);
             deleteFolderRecursive(worldFolder);
+
             this.currentGameWorld = null;
+            Bukkit.getLogger().info("[LGUHC] Nettoyage complet du monde " + name + " terminé.");
         }
     }
 
@@ -272,6 +286,10 @@ public class WorldManager {
             }
         }
         preparedWorlds.clear();
+
+        Main.getInstance().getConfig().set("worlds-data", null);
+        Main.getInstance().saveConfig();
+
         saveToConfig();
     }
 
