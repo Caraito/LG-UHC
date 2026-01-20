@@ -18,10 +18,13 @@ public class WorldManager {
     private World currentGameWorld;
 
     public WorldManager() {
-        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("worlds-data"));
+        // CORRECTION : On utilise la même clé que dans saveToConfig
+        this.preparedWorlds = new ArrayList<>(Main.getInstance().getConfig().getStringList("prepared-worlds-list"));
+        Bukkit.getLogger().info("[LG UHC] " + preparedWorlds.size() + " mondes chargés depuis la config.");
     }
 
     private void saveToConfig() {
+        // On sauvegarde la liste des noms des mondes
         Main.getInstance().getConfig().set("prepared-worlds-list", preparedWorlds);
         Main.getInstance().saveConfig();
     }
@@ -43,7 +46,7 @@ public class WorldManager {
 
                 setupUHCWorld(world);
                 preparedWorlds.add(name);
-                saveToConfig();
+                saveToConfig(); // Sauvegarde immédiate après ajout
 
                 count++;
             }
@@ -100,9 +103,6 @@ public class WorldManager {
         }.runTaskTimer(Main.getInstance(), 0L, 40L);
     }
 
-    /**
-     * CORRECTION : Charge les chunks AUTOUR des positions sauvegardées dans la config.
-     */
     public void preLoadChunks(int mapIndex, int radiusBlocks) {
         if (mapIndex >= preparedWorlds.size()) return;
 
@@ -110,7 +110,6 @@ public class WorldManager {
         World world = Bukkit.getWorld(worldName);
         if (world == null) world = Bukkit.createWorld(new WorldCreator(worldName));
 
-        // On récupère toutes les positions sauvegardées
         List<String> spawns = Main.getInstance().getConfig().getStringList("worlds-data." + worldName + ".spawns");
         List<String> respawns = Main.getInstance().getConfig().getStringList("worlds-data." + worldName + ".respawns");
 
@@ -122,7 +121,6 @@ public class WorldManager {
             return;
         }
 
-        // Utilisation d'un Set pour éviter de charger deux fois le même chunk si les positions sont proches
         Set<Long> chunksToLoad = new HashSet<>();
         int radiusChunks = radiusBlocks / 16;
 
@@ -133,7 +131,6 @@ public class WorldManager {
 
             for (int x = centerX - radiusChunks; x <= centerX + radiusChunks; x++) {
                 for (int z = centerZ - radiusChunks; z <= centerZ + radiusChunks; z++) {
-                    // On stocke les coordonnées du chunk sous forme de Long (clé unique)
                     chunksToLoad.add((long) x << 32 | z & 0xFFFFFFFFL);
                 }
             }
@@ -254,19 +251,20 @@ public class WorldManager {
         if (this.currentGameWorld != null) {
             String name = currentGameWorld.getName();
 
-            // 1. On téléporte les joueurs restants au spawn principal
             for (Player p : currentGameWorld.getPlayers()) {
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
             }
 
-            // 2. Supprimer UNIQUEMENT les données de CE monde dans la config
+            // On retire le monde de la liste des mondes disponibles
+            preparedWorlds.remove(name);
+            saveToConfig();
+
+            // On retire ses données de spawn
             Main.getInstance().getConfig().set("worlds-data." + name, null);
             Main.getInstance().saveConfig();
 
-            // 3. Décharger le monde
             Bukkit.unloadWorld(this.currentGameWorld, false);
 
-            // 4. Supprimer le dossier physique
             File worldFolder = new File(Bukkit.getWorldContainer(), name);
             deleteFolderRecursive(worldFolder);
 
@@ -286,11 +284,8 @@ public class WorldManager {
             }
         }
         preparedWorlds.clear();
-
         Main.getInstance().getConfig().set("worlds-data", null);
-        Main.getInstance().saveConfig();
-
-        saveToConfig();
+        saveToConfig(); // Sauvegarde la liste vide
     }
 
     private void deleteFolderRecursive(File path) {
