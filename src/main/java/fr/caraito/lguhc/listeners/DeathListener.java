@@ -206,6 +206,7 @@ public class DeathListener implements Listener {
 
         if (loups == 0 && village > 0) finishGame("Le Village");
         else if (village == 0 && loups > 0) finishGame("Les Loups-Garous");
+        else finishGame("Egalité");
     }
 
     private void finishGame(String winner) {
