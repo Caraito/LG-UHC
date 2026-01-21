@@ -29,13 +29,25 @@ public class WorldManager {
         Main.getInstance().saveConfig();
     }
 
-    public void generateMultipleWorlds(int amount) {
+    public void generateMultipleWorlds(int amount, boolean stopAfter) {
         new BukkitRunnable() {
             int count = 0;
             @Override
             public void run() {
                 if (count >= amount) {
                     Bukkit.broadcastMessage("§a[LG UHC] Génération terminée ! Mondes dispo : §f" + preparedWorlds.size());
+
+                    if (stopAfter) {
+                        Bukkit.getLogger().info("[LG UHC] Fin de generation detectee. Arret du serveur dans 10 secondes...");
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                Bukkit.getLogger().info("[LG UHC] Arret automatique du serveur.");
+                                Bukkit.shutdown();
+                            }
+                        }.runTaskLater(Main.getInstance(), 200L); // 200 ticks = 10 secondes
+                    }
+
                     this.cancel();
                     return;
                 }

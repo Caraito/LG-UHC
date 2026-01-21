@@ -26,11 +26,14 @@ public class CommandWorld implements CommandExecutor {
         try {
             switch (args[0].toLowerCase()) {
                 case "create":
-                    if (args.length != 2) {
-                        sender.sendMessage("§cUsage: /lgworld create <nb_mondes>");
+                    if (args.length < 2) {
+                        sender.sendMessage("§cUsage: /lgworld create <nb_mondes> [--stop]");
                         return true;
                     }
-                    main.getWorldManager().generateMultipleWorlds(Integer.parseInt(args[1]));
+                    int amount = Integer.parseInt(args[1]);
+                    boolean shouldStop = args.length == 3 && args[2].equalsIgnoreCase("--stop");
+
+                    main.getWorldManager().generateMultipleWorlds(amount, shouldStop);
                     break;
 
                 case "prepare":
@@ -75,7 +78,7 @@ public class CommandWorld implements CommandExecutor {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§6§m---------§r §6Aide /lgworld §6§m---------");
-        sender.sendMessage("§e/lgworld create <nb> §7: Génère X nouveaux mondes.");
+        sender.sendMessage("§e/lgworld create <nb> [--stop] §7: Génère X mondes. --stop éteint le serveur après.");
         sender.sendMessage("§e/lgworld remove §7: Supprime tous les mondes LG du dossier serveur.");
         sender.sendMessage("§e/lgworld prepare <spawns_par_map> <respawns_par_map> <nb_maps> : Prépare les emplacements sûrs.");
         sender.sendMessage("§e/lgworld load <nombre_de_maps> <radius> §7: Pré-charge (génère) les chunks.");
