@@ -21,3 +21,5 @@ commands:
     permission: lguhc.admin
   lgrevive:
     description: Revivre un joueur mort.
+  lginfo:
+    description: Affiche les informations de votre rôle et la liste des loups.

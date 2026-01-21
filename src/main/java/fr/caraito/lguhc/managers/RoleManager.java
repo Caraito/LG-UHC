@@ -22,20 +22,32 @@ public class RoleManager {
 
         if (players.isEmpty()) return;
 
-        // --- LOGIQUE DE DISTRIBUTION ADAPTATIVE ---
-        if (players.size() == 1) {
-            assign(players.get(0), new RoleSalvateur(Main.getInstance()));
-        }
-        else {
-            assign(players.remove(0), new RoleSalvateur(Main.getInstance()));
-            assign(players.remove(0), new RoleLGPerfide(Main.getInstance()));
+        int total = players.size();
+        int wolfLimit = total / 3; // Définit le tiers de loups (arrondi inférieur)
+        int wolfCount = 0;
+        int villageCount = 0;
 
-            for (Player player : players) {
-                if (new Random().nextBoolean()) {
-                    assign(player, new RoleVillageois(Main.getInstance()));
+        for (Player player : players) {
+            if (wolfCount < wolfLimit) {
+                // Attribution des Loups (1/3)
+                if (wolfCount == 0) {
+                    assign(player, new RoleIPDL(Main.getInstance()));
+                } else if (wolfCount == 1) {
+                    assign(player, new RoleLGPerfide(Main.getInstance()));
                 } else {
                     assign(player, new RoleLG(Main.getInstance()));
                 }
+                wolfCount++;
+            } else {
+                // Attribution des Villageois (Le reste, soit ~2/3)
+                if (villageCount == 0) {
+                    assign(player, new RoleSalvateur(Main.getInstance()));
+                } else if (villageCount == 1) {
+                    assign(player, new RoleSorciere(Main.getInstance()));
+                } else {
+                    assign(player, new RoleVillageois(Main.getInstance()));
+                }
+                villageCount++;
             }
         }
 

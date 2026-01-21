@@ -54,6 +54,7 @@ public class Main extends JavaPlugin {
         getCommand("lgstop").setExecutor(new CommandStop(this));
         getCommand("lgconfig").setExecutor(new CommandConfig(this));
         getCommand("lgrevive").setExecutor(new CommandRevive(this));
+        getCommand("lginfo").setExecutor(new CommandLGInfo(this));
 
         Bukkit.getConsoleSender().sendMessage(ChatColor.GOLD + "Plugin LG UHC par Caraito - Operationnel");
 
