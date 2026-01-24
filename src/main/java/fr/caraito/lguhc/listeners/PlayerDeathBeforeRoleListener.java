@@ -98,10 +98,10 @@ public class PlayerDeathBeforeRoleListener implements Listener {
                 main.getConfig().set("worlds-data." + worldName + ".respawns", respawns);
                 main.saveConfig();
 
-                Bukkit.getLogger().info("§a§l[LG UHC] §7Utilisation d'un point de respawn pré-préparé.");
+                Bukkit.getLogger().info(ChatColor.GREEN + "[LG UHC] " + ChatColor.YELLOW + "Utilisation d'un point de respawn pré-préparé.");
             } else {
                 // FALLBACK : Si la config est vide, on utilise ton ancienne méthode aléatoire
-                Bukkit.getLogger().info("§6§l[LG UHC] §eAttention : Aucun point préparé trouvé, recherche aléatoire...");
+                Bukkit.getLogger().info(ChatColor.DARK_RED + "[LG UHC] " + ChatColor.YELLOW + "Attention : Aucun point préparé trouvé, recherche aléatoire...");
                 int radius = 1800;
                 Random random = new Random();
                 int x = random.nextInt(radius * 2) - radius;
