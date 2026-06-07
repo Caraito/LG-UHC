@@ -27,14 +27,22 @@ public class CommandConfig implements CommandExecutor {
     public void openConfigGUI(Player player) {
         Inventory gui = Bukkit.createInventory(null, 9, "§8Configuration LG UHC");
         boolean meetup = main.getConfig().getBoolean("meetup", false);
+        boolean revealRoles = main.getConfig().getBoolean("reveal_roles", false);
 
         ItemStack item = new ItemStack(meetup ? Material.EMERALD_BLOCK : Material.REDSTONE_BLOCK);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName("§eMode Meetup : " + (meetup ? "§aActivé" : "§cDésactivé"));
         meta.setLore(Arrays.asList("§7Cliquez pour changer", "", "§fStuff auto & Rôles à 5min"));
         item.setItemMeta(meta);
+        gui.setItem(3, item);
 
-        gui.setItem(4, item);
+        ItemStack itemReveal = new ItemStack(revealRoles ? Material.EYE_OF_ENDER : Material.ENDER_PEARL);
+        ItemMeta metaReveal = itemReveal.getItemMeta();
+        metaReveal.setDisplayName("§eRévélation des rôles (20min) : " + (revealRoles ? "§aActivé" : "§cDésactivé"));
+        metaReveal.setLore(Arrays.asList("§7Cliquez pour changer"));
+        itemReveal.setItemMeta(metaReveal);
+        gui.setItem(5, itemReveal);
+
         player.openInventory(gui);
     }
 }

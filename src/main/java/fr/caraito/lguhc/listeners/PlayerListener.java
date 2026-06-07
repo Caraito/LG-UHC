@@ -3,11 +3,11 @@ package fr.caraito.lguhc.listeners;
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.commands.CommandConfig;
 import fr.caraito.lguhc.enums.GState;
-import fr.caraito.lguhc.roles.LGRole;
-import fr.caraito.lguhc.roles.RoleSalvateur;
+import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -105,7 +105,24 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
-        if (main.isState(GState.LOBBY)) event.setCancelled(true);
+        if (main.isState(GState.LOBBY)) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
+            org.bukkit.event.entity.EntityDamageByEntityEvent e = (org.bukkit.event.entity.EntityDamageByEntityEvent) event;
+            if (e.getDamager() instanceof Player) {
+                Player damager = (Player) e.getDamager();
+                LGRole role = main.getRoleManager().getRole(damager.getUniqueId());
+                if (role instanceof RoleAlpha) {
+                    World world = damager.getWorld();
+                    if (world.getTime() >= 13000 && world.getTime() <= 23000) {
+                        e.setDamage(e.getDamage() + 2.0); // +1 coeur de dégâts brut
+                    }
+                }
+            }
+        }
     }
 
     @EventHandler
@@ -181,10 +198,39 @@ public class PlayerListener implements Listener {
 
         if (title.equals("§8Configuration LG UHC")) {
             event.setCancelled(true);
-            boolean current = main.getConfig().getBoolean("meetup", false);
-            main.getConfig().set("meetup", !current);
+            int slot = event.getRawSlot();
+            if (slot == 3) {
+                boolean current = main.getConfig().getBoolean("meetup", false);
+                main.getConfig().set("meetup", !current);
+            } else if (slot == 5) {
+                boolean reveal = main.getConfig().getBoolean("reveal_roles", false);
+                main.getConfig().set("reveal_roles", !reveal);
+            } else {
+                return;
+            }
             main.saveConfig();
             new CommandConfig(main).openConfigGUI((Player) event.getWhoClicked());
+            return;
+        }
+
+        if (title.equals("§8Vengeance du Chasseur")) {
+            event.setCancelled(true);
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType() != Material.SKULL_ITEM || !clicked.hasItemMeta() || !clicked.getItemMeta().hasDisplayName()) return;
+
+            String targetName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+            Player target = Bukkit.getPlayer(targetName);
+            if (target != null) {
+                target.setMaxHealth(8.0); // 4 coeurs
+                target.sendMessage("§c§l[Chasseur] §fLe Chasseur vous a maudit ! Votre vie maximale est réduite à 4 cœurs pendant 10 minutes.");
+                Bukkit.getScheduler().runTaskLater(main, () -> {
+                    if (target.isOnline()) {
+                        target.setMaxHealth(20.0);
+                        target.sendMessage("§a§l[Chasseur] §fLa malédiction du Chasseur est levée.");
+                    }
+                }, 12000L);
+                event.getWhoClicked().closeInventory();
+            }
             return;
         }
 

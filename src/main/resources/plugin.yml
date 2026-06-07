@@ -23,3 +23,13 @@ commands:
     description: Revivre un joueur mort.
   lginfo:
     description: Affiche les informations de votre rôle et la liste des loups.
+  lgrole:
+    description: Revoir son rôle et ses alliés
+  lgvoyante:
+    description: Utiliser le pouvoir de la voyante
+  lgrenard:
+    description: Utiliser le pouvoir du renard
+  lggrimer:
+    description: Se déguiser (Loup Grimeur)
+  lgsacrifice:
+    description: Sacrifier un loup (Loup Blanc)

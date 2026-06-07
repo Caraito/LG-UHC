@@ -8,7 +8,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -22,6 +24,7 @@ public class DeathListener implements Listener {
     private final Map<UUID, ItemStack[]> savedArmor = new HashMap<>();
     private final Map<UUID, Location> deathLocations = new HashMap<>();
     private final Set<UUID> waitingForRespawn = new HashSet<>();
+    private final Map<UUID, Set<UUID>> attackers = new HashMap<>();
 
     public DeathListener(Main main) {
         this.main = main;
@@ -34,6 +37,14 @@ public class DeathListener implements Listener {
         if (main.getGameTask() == null || !main.getGameTask().isRoleDistributionDone) return;
 
         Player victim = event.getEntity();
+
+        // Gestion des attaquants pour le chasseur
+        if (victim.getLastDamageCause() instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
+            org.bukkit.event.entity.EntityDamageByEntityEvent nEvent = (org.bukkit.event.entity.EntityDamageByEntityEvent) victim.getLastDamageCause();
+            if (nEvent.getDamager() instanceof Player) {
+                attackers.computeIfAbsent(victim.getUniqueId(), k -> new HashSet<>()).add(nEvent.getDamager().getUniqueId());
+            }
+        }
         UUID uuid = victim.getUniqueId();
         Location deathLoc = victim.getLocation();
         Player killer = victim.getKiller();
@@ -174,10 +185,15 @@ public class DeathListener implements Listener {
         savedInventories.remove(uuid);
         savedArmor.remove(uuid);
         deathLocations.remove(uuid);
+        attackers.remove(uuid);
 
         victim.sendMessage("§c§l[Mort] §7Personne ne vous a sauvé. Vous êtes définitivement spectateur.");
 
         LGRole role = main.getRoleManager().getRole(uuid);
+
+        if (role instanceof RoleChasseur) {
+            openChasseurGUI(victim);
+        }
         String roleName = (role != null) ? role.getName() : "Aucun rôle";
 
         Bukkit.broadcastMessage(ChatColor.RED + victim.getName()
@@ -236,6 +252,28 @@ public class DeathListener implements Listener {
             Bukkit.broadcast("§8[§6LG UHC§8] §7Retour au lobby.", "lguhc.state");
 
         }, 200L);
+    }
+
+    private void openChasseurGUI(Player player) {
+        Set<UUID> victimAttackers = attackers.get(player.getUniqueId());
+        if (victimAttackers == null || victimAttackers.isEmpty()) {
+            player.sendMessage("§cVous n'avez aucun attaquant à cibler.");
+            return;
+        }
+
+        Inventory gui = Bukkit.createInventory(null, 27, "§8Vengeance du Chasseur");
+        for (UUID attackerId : victimAttackers) {
+            Player target = Bukkit.getPlayer(attackerId);
+            if (target != null && target.getGameMode() == GameMode.SURVIVAL) {
+                ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+                SkullMeta meta = (SkullMeta) head.getItemMeta();
+                meta.setOwner(target.getName());
+                meta.setDisplayName("§c" + target.getName());
+                head.setItemMeta(meta);
+                gui.addItem(head);
+            }
+        }
+        player.openInventory(gui);
     }
 
     private Location findSafeLocationFallback(World world) {
