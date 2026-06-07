@@ -2,6 +2,7 @@ package fr.caraito.lguhc.listeners;
 
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.commands.CommandConfig;
+import fr.caraito.lguhc.commands.CommandLoups;
 import fr.caraito.lguhc.enums.GState;
 import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
@@ -229,6 +230,38 @@ public class PlayerListener implements Listener {
                         target.sendMessage("§a§l[Chasseur] §fLa malédiction du Chasseur est levée.");
                     }
                 }, 12000L);
+                event.getWhoClicked().closeInventory();
+            }
+            return;
+        }
+
+        if (title.equals("§8Choix du Grimage")) {
+            event.setCancelled(true);
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType() != Material.PAPER || !clicked.hasItemMeta()) return;
+
+            String roleDisguise = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+            LGRole role = main.getRoleManager().getRole(event.getWhoClicked().getUniqueId());
+            if (role instanceof RoleGrimeur) {
+                ((RoleGrimeur) role).setDisguisedRole(roleDisguise);
+                event.getWhoClicked().sendMessage(ChatColor.RED + "[Grimeur] " + ChatColor.WHITE + "Vous apparaîtrez désormais comme " + ChatColor.GOLD + roleDisguise + ChatColor.WHITE + " à la Voyante.");
+            }
+            event.getWhoClicked().closeInventory();
+            return;
+        }
+
+        if (title.equals("§8Sacrifice du Loup Blanc")) {
+            event.setCancelled(true);
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || clicked.getType() != Material.SKULL_ITEM || !clicked.hasItemMeta()) return;
+
+            String targetName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+            Player target = Bukkit.getPlayer(targetName);
+            if (target != null) {
+                LGRole role = main.getRoleManager().getRole(event.getWhoClicked().getUniqueId());
+                if (role instanceof RoleLoupBlanc) {
+                    new CommandLoups(main).executeSacrifice((Player) event.getWhoClicked(), (RoleLoupBlanc) role, target);
+                }
                 event.getWhoClicked().closeInventory();
             }
             return;

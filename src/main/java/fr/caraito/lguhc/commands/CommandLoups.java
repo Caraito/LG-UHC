@@ -2,14 +2,23 @@ package fr.caraito.lguhc.commands;
 
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.roles.*;
+import fr.caraito.lguhc.Main;
+import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+
+import java.util.UUID;
 
 public class CommandLoups implements CommandExecutor {
 
@@ -30,21 +39,17 @@ public class CommandLoups implements CommandExecutor {
                 player.sendMessage(ChatColor.RED + "Vous n'êtes pas le Loup Grimeur.");
                 return true;
             }
-            if (args.length < 1) {
-                player.sendMessage(ChatColor.RED + "Usage: /lggrimer <nom_du_rôle>");
-                return true;
+            if (args.length >= 1) {
+                String roleDisguise = String.join(" ", args);
+                ((RoleGrimeur) role).setDisguisedRole(roleDisguise);
+                player.sendMessage(ChatColor.RED + "[Grimeur] " + ChatColor.WHITE + "Vous apparaîtrez désormais comme " + ChatColor.GOLD + roleDisguise + ChatColor.WHITE + " à la Voyante.");
+            } else {
+                openGrimeurGUI(player);
             }
-            String roleDisguise = String.join(" ", args);
-            ((RoleGrimeur) role).setDisguisedRole(roleDisguise);
-            player.sendMessage(ChatColor.RED + "[Grimeur] " + ChatColor.WHITE + "Vous apparaîtrez désormais comme " + ChatColor.GOLD + roleDisguise + ChatColor.WHITE + " à la Voyante.");
 
         } else if (label.equalsIgnoreCase("lgsacrifice")) {
             if (!(role instanceof RoleLoupBlanc)) {
                 player.sendMessage(ChatColor.RED + "Vous n'êtes pas le Loup Blanc.");
-                return true;
-            }
-            if (args.length < 1) {
-                player.sendMessage(ChatColor.RED + "Usage: /lgsacrifice <joueur>");
                 return true;
             }
 
@@ -55,34 +60,78 @@ public class CommandLoups implements CommandExecutor {
                 return true;
             }
 
-            Player target = Bukkit.getPlayer(args[0]);
-            if (target == null) {
-                player.sendMessage(ChatColor.RED + "Joueur non trouvé.");
-                return true;
+            if (args.length >= 1) {
+                Player target = Bukkit.getPlayer(args[0]);
+                if (target == null) {
+                    player.sendMessage(ChatColor.RED + "Joueur non trouvé.");
+                    return true;
+                }
+                executeSacrifice(player, lb, target);
+            } else {
+                openSacrificeGUI(player);
             }
-
-            LGRole targetRole = main.getRoleManager().getRole(target.getUniqueId());
-            if (targetRole == null || targetRole.getCamp() != RoleCamp.LOUPS) {
-                player.sendMessage(ChatColor.RED + "Vous ne pouvez sacrifier que des Loups.");
-                return true;
-            }
-
-            if (player.getLocation().distance(target.getLocation()) > 10) {
-                player.sendMessage(ChatColor.RED + "Le joueur est trop loin.");
-                return true;
-            }
-
-            // Sacrifice
-            target.setMaxHealth(target.getMaxHealth() - 2.0);
-            target.sendMessage(ChatColor.RED + "Le Loup Blanc vous a sacrifié ! Vous perdez 1 cœur permanent.");
-
-            player.setMaxHealth(player.getMaxHealth() + 2.0);
-            player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 6000, 0)); // 5 min
-            player.sendMessage(ChatColor.DARK_PURPLE + "[Loup Blanc] " + ChatColor.WHITE + "Vous avez sacrifié " + ChatColor.RED + target.getName() + ChatColor.WHITE + ". +1 cœur permanent et Force I (5 min).");
-
-            lb.setLastSacrifice(System.currentTimeMillis());
         }
 
         return true;
+    }
+
+    public void executeSacrifice(Player player, RoleLoupBlanc lb, Player target) {
+        LGRole targetRole = main.getRoleManager().getRole(target.getUniqueId());
+        if (targetRole == null || targetRole.getCamp() != RoleCamp.LOUPS) {
+            player.sendMessage(ChatColor.RED + "Vous ne pouvez sacrifier que des Loups.");
+            return;
+        }
+
+        if (target.getMaxHealth() <= 16.0) { // 8 coeurs minimum
+            player.sendMessage(ChatColor.RED + "Ce loup est trop faible pour être sacrifié davantage.");
+            return;
+        }
+
+        if (player.getLocation().distance(target.getLocation()) > 10) {
+            player.sendMessage(ChatColor.RED + "Le joueur est trop loin.");
+            return;
+        }
+
+        // Sacrifice
+        target.setMaxHealth(target.getMaxHealth() - 2.0);
+        target.sendMessage(ChatColor.RED + "Le Loup Blanc vous a sacrifié ! Vous perdez 1 cœur permanent.");
+
+        player.setMaxHealth(player.getMaxHealth() + 2.0);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 6000, 0)); // 5 min
+        player.sendMessage(ChatColor.DARK_PURPLE + "[Loup Blanc] " + ChatColor.WHITE + "Vous avez sacrifié " + ChatColor.RED + target.getName() + ChatColor.WHITE + ". +1 cœur permanent et Force I (5 min).");
+
+        lb.setLastSacrifice(System.currentTimeMillis());
+    }
+
+    private void openGrimeurGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, "§8Choix du Grimage");
+        String[] roles = {"Simple Villageois", "Voyante", "Renard", "Petite Fille", "Chasseur", "Salvateur", "Sorcière", "Loup-Garou", "Assassin"};
+        for (String rName : roles) {
+            ItemStack item = new ItemStack(Material.PAPER);
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName("§e" + rName);
+            item.setItemMeta(meta);
+            gui.addItem(item);
+        }
+        player.openInventory(gui);
+    }
+
+    private void openSacrificeGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, "§8Sacrifice du Loup Blanc");
+        for (UUID uuid : main.getRoleManager().getRoles().keySet()) {
+            LGRole r = main.getRoleManager().getRole(uuid);
+            if (r != null && r.getCamp() == RoleCamp.LOUPS) {
+                Player target = Bukkit.getPlayer(uuid);
+                if (target != null && target.isOnline() && !target.getUniqueId().equals(player.getUniqueId())) {
+                    ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+                    SkullMeta meta = (SkullMeta) head.getItemMeta();
+                    meta.setOwner(target.getName());
+                    meta.setDisplayName("§c" + target.getName());
+                    head.setItemMeta(meta);
+                    gui.addItem(head);
+                }
+            }
+        }
+        player.openInventory(gui);
     }
 }

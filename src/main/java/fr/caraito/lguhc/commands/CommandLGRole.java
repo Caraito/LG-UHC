@@ -35,10 +35,10 @@ public class CommandLGRole implements CommandExecutor {
 
         player.sendMessage(ChatColor.GREEN + "========== VOTRE RÔLE ==========");
         player.sendMessage(ChatColor.WHITE + "Rôle : " + ChatColor.GOLD + role.getName());
-        player.sendMessage(ChatColor.WHITE + "Camp : " + (role.getCamp() == RoleCamp.LOUPS ? ChatColor.RED : ChatColor.GREEN) + role.getCamp().name());
+        player.sendMessage(ChatColor.WHITE + "Camp : " + (role.getCamp() == RoleCamp.LOUPS ? ChatColor.RED : (role.getCamp() == RoleCamp.SOLITAIRE ? ChatColor.DARK_PURPLE : ChatColor.GREEN)) + role.getCamp().name());
         player.sendMessage(ChatColor.GRAY + role.getDescription());
 
-        if (role.getCamp() == RoleCamp.LOUPS || role.getCamp() == RoleCamp.SOLITAIRE) {
+        if (role.getCamp() == RoleCamp.LOUPS) {
             List<String> wolfNames = new ArrayList<>();
             for (UUID uuid : main.getRoleManager().getRoles().keySet()) {
                 LGRole r = main.getRoleManager().getRole(uuid);
