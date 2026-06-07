@@ -2,8 +2,6 @@ package fr.caraito.lguhc.commands;
 
 import fr.caraito.lguhc.Main;
 import fr.caraito.lguhc.roles.*;
-import fr.caraito.lguhc.Main;
-import fr.caraito.lguhc.roles.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
