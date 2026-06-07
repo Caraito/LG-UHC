@@ -25,9 +25,9 @@ public class ScoreboardManager {
             time = Main.getInstance().getGameTask().getSeconds();
         }
 
-        // Calcul des joueurs encore en vie (ceux qui sont en mode Survie)
+        // Calcul des joueurs encore en vie (ceux qui sont en mode Survie OU en attente de résurrection)
         long aliveCount = Bukkit.getOnlinePlayers().stream()
-                .filter(p -> p.getGameMode() == GameMode.SURVIVAL)
+                .filter(p -> p.getGameMode() == GameMode.SURVIVAL || Main.getInstance().getDeathListener().getWaitingForRespawn().contains(p.getUniqueId()))
                 .count();
 
         // Récupération de la bordure (rayon de la bordure)
