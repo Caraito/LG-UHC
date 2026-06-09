@@ -1,3 +1,11 @@
 prepared-worlds-list: []
 worlds-data: []
 meetup: false
+reveal_roles: false
+role_time_normal: 1200
+role_time_meetup: 300
+diamond_limit: 15
+apple_rate: 5
+episode_duration: 1200
+ore_multiplier: 2
+border_shrink_per_minute: 0

@@ -32,19 +32,20 @@ public class GameTask extends BukkitRunnable {
         if (!main.isState(GState.GAME)) return;
         seconds++;
 
-        // --- TIMING DYNAMIQUE ---
+        // --- CONFIGURATION DYNAMIQUE ---
         boolean isMeetup = main.getConfig().getBoolean("meetup", false);
-        int roleTime = isMeetup ? 300 : 1200; // 5 min ou 20 min
+        int roleTime = isMeetup ? main.getConfig().getInt("role_time_meetup", 300) : main.getConfig().getInt("role_time_normal", 1200);
+        int episodeDuration = main.getConfig().getInt("episode_duration", 1200);
+        int borderShrink = main.getConfig().getInt("border_shrink_per_minute", 0);
 
         // 1. Distribution initiale des rôles
         if (seconds == roleTime) {
             main.getRoleManager().distributeRoles();
-            String episodeName = isMeetup ? "1" : "2";
-            broadcastEpisode(episodeName);
+            broadcastEpisode("1");
             isRoleDistributionDone = true;
         }
 
-        // Révélation des rôles à 20 min (1200 secondes) si option activée
+        // Révélation des rôles à 20 min (si option activée)
         if (seconds == 1200 && main.getConfig().getBoolean("reveal_roles", false)) {
             List<String> roleNames = new ArrayList<>();
             for (LGRole r : main.getRoleManager().getRoles().values()) {
@@ -54,16 +55,26 @@ public class GameTask extends BukkitRunnable {
             Bukkit.broadcastMessage("§e" + String.join(", ", roleNames));
         }
 
-        // 2. Gestion des épisodes suivants (Toutes les 20 minutes : 1200, 2400, 3600...)
-        // On vérifie que ce n'est pas le moment où on distribue les rôles pour éviter les doubles messages
-        else if (seconds % 1200 == 0) {
-            int episode = (seconds / 1200) + 1;
+        // 2. Gestion des épisodes suivants
+        if (seconds > roleTime && (seconds - roleTime) % episodeDuration == 0) {
+            int episode = ((seconds - roleTime) / episodeDuration) + 1;
             broadcastEpisode(String.valueOf(episode));
 
             // Reset du pouvoir du Salvateur pour le nouvel épisode
             for (LGRole role : main.getRoleManager().getRoles().values()) {
                 if (role instanceof RoleSalvateur) {
                     ((RoleSalvateur) role).setUsedThisEpisode(false);
+                }
+            }
+        }
+
+        // 3. Réduction de la bordure
+        if (borderShrink > 0 && seconds % 60 == 0) {
+            for (World world : Bukkit.getWorlds()) {
+                double currentSize = world.getWorldBorder().getSize();
+                double newSize = Math.max(10, currentSize - (borderShrink * 2)); // *2 car on réduit le diamètre
+                if (newSize < currentSize) {
+                    world.getWorldBorder().setSize(newSize, 60); // Animation sur 60 secondes
                 }
             }
         }
@@ -77,12 +88,10 @@ public class GameTask extends BukkitRunnable {
 
             // --- LOGIQUE PETITE FILLE / PERFIDE ---
             if (role instanceof RolePetiteFille || role instanceof RoleLGPerfide) {
-                // Jamais de force
                 if (p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE)) {
                     p.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
                 }
 
-                // Vérification de l'armure
                 boolean hasArmor = false;
                 for (ItemStack armor : p.getInventory().getArmorContents()) {
                     if (armor != null && armor.getType() != Material.AIR) {
@@ -92,7 +101,6 @@ public class GameTask extends BukkitRunnable {
                 }
 
                 if (isNight) {
-                    // Activation de l'invisibilité (une fois par nuit)
                     if (!hasArmor && !hasUsedInvisibilityTonight.getOrDefault(p.getUniqueId(), false)) {
                         if (!p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
                             p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 12000, 0, false, false));
@@ -103,19 +111,15 @@ public class GameTask extends BukkitRunnable {
                         }
                     }
                 } else {
-                    // Reset du flag de nuit au lever du jour
                     hasUsedInvisibilityTonight.put(p.getUniqueId(), false);
                 }
 
-                // Retrait immédiat si l'armure est remise
                 if (hasArmor && p.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
                     p.removePotionEffect(PotionEffectType.INVISIBILITY);
                     p.removePotionEffect(PotionEffectType.WEAKNESS);
                     String roleNameMsg = (role instanceof RolePetiteFille) ? "Petite Fille" : "Perfide";
                     p.sendMessage("§c§l[" + roleNameMsg + "] §fArmure remise, vous êtes de nouveau §avisible§f.");
                 }
-
-                // On utilise continue pour ne pas appliquer la force des LG classiques
                 continue;
             }
 
@@ -141,10 +145,7 @@ public class GameTask extends BukkitRunnable {
                         p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 200, 0, false, false));
                     }
                 } else {
-                    // On ne retire la force que si ce n'est pas le Loup Blanc avec son boost actif
                     if (p.hasPotionEffect(PotionEffectType.INCREASE_DAMAGE)) {
-                        // On vérifie la durée restante (boost lb = 5min = 6000 ticks)
-                        // Si durée > 200 (10s), on considère que c'est le boostLB
                         for (PotionEffect effect : p.getActivePotionEffects()) {
                             if (effect.getType().equals(PotionEffectType.INCREASE_DAMAGE) && effect.getDuration() <= 200) {
                                 p.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
