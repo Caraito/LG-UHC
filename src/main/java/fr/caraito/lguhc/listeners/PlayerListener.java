@@ -76,31 +76,34 @@ public class PlayerListener implements Listener {
 
         if (block.getType() == Material.DIAMOND_ORE) {
             int count = diamondsMined.getOrDefault(player.getUniqueId(), 0);
-            if (count >= 15) {
+            int limit = main.getConfig().getInt("diamond_limit", 15);
+            if (count >= limit) {
                 event.setCancelled(true);
-                player.sendMessage("§c§l[Limite] §fVous avez atteint la limite de §b15 diamants §f!");
+                player.sendMessage("§c§l[Limite] §fVous avez atteint la limite de §b" + limit + " diamants §f!");
                 return;
             }
             diamondsMined.put(player.getUniqueId(), count + 1);
         }
 
         if (block.getType() == Material.LOG || block.getType() == Material.LOG_2) {
+            int appleRate = main.getConfig().getInt("apple_rate", 5);
             for (int i = 0; i <= 20; i++) {
                 org.bukkit.block.Block b = block.getRelative(0, i, 0);
                 if (b.getType() == Material.LOG || b.getType() == Material.LOG_2) {
                     b.breakNaturally();
-                    if (new Random().nextInt(100) < 5)
+                    if (new Random().nextInt(100) < appleRate)
                         b.getWorld().dropItemNaturally(b.getLocation(), new ItemStack(Material.APPLE));
                 } else break;
             }
         }
 
+        int multiplier = main.getConfig().getInt("ore_multiplier", 2);
         if (block.getType() == Material.IRON_ORE) {
             block.setType(Material.AIR);
-            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, 2));
+            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.IRON_INGOT, multiplier));
         } else if (block.getType() == Material.GOLD_ORE) {
             block.setType(Material.AIR);
-            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLD_INGOT, 2));
+            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.GOLD_INGOT, multiplier));
         }
     }
 
@@ -200,14 +203,50 @@ public class PlayerListener implements Listener {
         if (title.equals("§8Configuration LG UHC")) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            if (slot == 3) {
-                boolean current = main.getConfig().getBoolean("meetup", false);
-                main.getConfig().set("meetup", !current);
-            } else if (slot == 5) {
-                boolean reveal = main.getConfig().getBoolean("reveal_roles", false);
-                main.getConfig().set("reveal_roles", !reveal);
-            } else {
-                return;
+            boolean isLeft = event.isLeftClick();
+            boolean isShift = event.isShiftClick();
+
+            int delta = isShift ? 5 : 1;
+            if (!isLeft) delta = -delta;
+
+            switch (slot) {
+                case 0:
+                    main.getConfig().set("meetup", !main.getConfig().getBoolean("meetup", false));
+                    break;
+                case 1:
+                    main.getConfig().set("reveal_roles", !main.getConfig().getBoolean("reveal_roles", false));
+                    break;
+                case 3:
+                    int rTimeN = main.getConfig().getInt("role_time_normal", 1200);
+                    main.getConfig().set("role_time_normal", Math.max(60, rTimeN + (delta * 60)));
+                    break;
+                case 4:
+                    int rTimeM = main.getConfig().getInt("role_time_meetup", 300);
+                    main.getConfig().set("role_time_meetup", Math.max(60, rTimeM + (delta * 60)));
+                    break;
+                case 5:
+                    int epDur = main.getConfig().getInt("episode_duration", 1200);
+                    main.getConfig().set("episode_duration", Math.max(60, epDur + (delta * 60)));
+                    break;
+                case 10:
+                    int dLim = main.getConfig().getInt("diamond_limit", 15);
+                    main.getConfig().set("diamond_limit", Math.max(0, dLim + delta));
+                    break;
+                case 11:
+                    int aRate = main.getConfig().getInt("apple_rate", 5);
+                    main.getConfig().set("apple_rate", Math.max(0, Math.min(100, aRate + delta)));
+                    break;
+                case 12:
+                    int oMult = main.getConfig().getInt("ore_multiplier", 2);
+                    main.getConfig().set("ore_multiplier", Math.max(1, oMult + (isLeft ? 1 : -1)));
+                    break;
+                case 13:
+                    int bShrink = main.getConfig().getInt("border_shrink_per_minute", 0);
+                    int bDelta = isShift ? 10 : 1;
+                    main.getConfig().set("border_shrink_per_minute", Math.max(0, bShrink + (isLeft ? bDelta : -bDelta)));
+                    break;
+                default:
+                    return;
             }
             main.saveConfig();
             new CommandConfig(main).openConfigGUI((Player) event.getWhoClicked());
